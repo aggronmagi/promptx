@@ -1,0 +1,233 @@
+package promptx
+
+import (
+	"fmt"
+	"strings"
+)
+
+// CommonOptionsOptionDeclareWithDefault promptx options
+// generate by https://github.com/timestee/optiongen
+//go:generate optionGen --option_with_struct_name=true --v=true
+func CommonOptionsOptionDeclareWithDefault() interface{} {
+	return map[string]interface{}{
+		"TipText":         "",
+		"TipTextColor":    Color(Yellow),
+		"TipBGColor":      Color(DefaultColor),
+		"PrefixText":      ">>> ",
+		"PrefixTextColor": Color(Green),
+		"PrefixBGColor":   Color(DefaultColor),
+		// check input valid
+		"ValidFunc":      (func(status int, in *Document) error)(nil),
+		"ValidTextColor": Color(Red),
+		"ValidBGColor":   Color(DefaultColor),
+		// exec input command
+		"ExecFunc":   (func(ctx Context, command string))(nil),
+		"FinishKey":  Key(Enter),
+		"CancelKey":  Key(ControlC),
+		"Completion": []CompleteOption(nil),
+		// if command slice size > 0. it will ignore ExecFunc and ValidFunc options
+		"Commands": []*Cmd(nil),
+	}
+}
+
+// CommonBlockManager default block manager.
+type CommonBlockManager struct {
+	*BlocksBaseManager
+	Tip        *BlocksSuffix
+	Prefix     *BlocksPrefix
+	Input      *BlocksEmacsBuffer
+	Validate   *BlocksNewLine
+	Completion *BlocksCompletion
+	cc         *CommonOptions
+	root       *Cmd
+}
+
+// NewDefaultBlockManger default blocks manager.
+func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
+	cc := NewCommonOptions(opts...)
+	m = &CommonBlockManager{
+		BlocksBaseManager: &BlocksBaseManager{},
+		Tip:               &BlocksSuffix{},
+		Prefix:            &BlocksPrefix{},
+		Input:             &BlocksEmacsBuffer{},
+		Validate:          &BlocksNewLine{},
+		Completion:        &BlocksCompletion{},
+		cc:                cc,
+	}
+	m.AddMirrorMode(m.Tip)
+	m.AddMirrorMode(m.Prefix)
+	m.AddMirrorMode(m.Input)
+	m.AddMirrorMode(m.Validate)
+	m.AddMirrorMode(m.Completion)
+
+	m.SetCallBack(m.FinishCallBack)
+	m.SetPreCheck(m.PreCheckCallBack)
+
+	m.Tip.SetIsDraw(func(status int) (draw bool) {
+		return status == NormalStatus
+	})
+
+	m.applyOptionModify()
+	return
+}
+
+func (m *CommonBlockManager) applyOptionModify() {
+	cc := m.cc
+	m.Tip.Text = cc.TipText
+	m.Tip.TextColor = cc.TipTextColor
+	m.Tip.BGColor = cc.TipBGColor
+	m.Prefix.Text = cc.PrefixText
+	m.Prefix.TextColor = cc.PrefixTextColor
+	m.Prefix.BGColor = cc.PrefixBGColor
+	m.Validate.TextColor = cc.ValidTextColor
+	m.Validate.BGColor = cc.ValidBGColor
+
+	m.SetCancelKey(cc.CancelKey)
+	m.SetFinishKey(cc.FinishKey)
+	// completion
+	if m.Completion.Cfg == nil {
+		m.Completion.Cfg = NewCompleteOptions(cc.Completion...)
+		m.Completion.ApplyOptions()
+		if m.Completion.Completions != nil {
+			m.Completion.Completions.Update(*NewDocument())
+		}
+	} else {
+		m.Completion.ApplyOptions(cc.Completion...)
+	}
+	// command
+	m.initCommand()
+}
+
+func (m *CommonBlockManager) initCommand() {
+	cc := m.cc
+	if len(cc.Commands) < 1 {
+		// revert command
+		m.root = nil
+		return
+	}
+	m.root = &Cmd{}
+	m.root.AddCmd(cc.Commands...)
+	// replace completion
+	m.Completion.ApplyOptions(
+		WithCompleteOptionCompleter(m.completeCommand),
+		WithCompleteOptionCompletionFillSpace(true),
+	)
+	// replace valid func
+	m.cc.ValidFunc = m.validCommand
+
+	// replace run action
+	m.cc.ExecFunc = m.execCommand
+}
+
+func (m *CommonBlockManager) completeCommand(in Document) []*Suggest {
+	return m.root.FindSuggest(&in)
+}
+
+func (m *CommonBlockManager) validCommand(status int, d *Document) error {
+	if status == NormalStatus {
+		return nil
+	}
+	if len(d.Text) == 0 {
+		return nil
+	}
+	cmds, _, err := m.root.ParseInput(d.Text, true)
+	if err != nil {
+		return err
+	}
+	if len(cmds) < 1 {
+		return fmt.Errorf("not found command[%s]", d.Text)
+	}
+	return err
+}
+func (m *CommonBlockManager) execCommand(oldCtx Context, command string) {
+	if len(command) == 0 {
+		return
+	}
+	ctx := &CommandContext{}
+	ctx.Context = m.GetContext()
+	ctx.Line = command
+	ctx.Cmds, ctx.Args, _ = m.root.ParseInput(command, true)
+	ctx.Root = m.root
+	// debug.Println("find cmd size:", len(ctx.Cmds))
+	// find last command which set exec func.
+	find := false
+	for i := len(ctx.Cmds) - 1; i >= 0; i-- {
+		cmd := ctx.Cmds[i]
+		// debug.Println("find ", cmd.Name)
+		if cmd.Func != nil {
+			// exec command func
+			cmd.Func(ctx)
+			find = true
+			break
+		}
+	}
+	if !find {
+		oldCtx.Println("command set deal functions.", command)
+	}
+}
+
+// SetPrompt set prefix text
+func (m *CommonBlockManager) SetPrompt(text string) {
+	if !strings.HasSuffix(text, " ") {
+		text += " "
+	}
+	m.Prefix.Text = text
+}
+
+func (m *CommonBlockManager) SetOption(opt CommonOption) {
+	_ = opt(m.cc)
+	m.applyOptionModify()
+}
+
+func (m *CommonBlockManager) ApplyOption(opts ...CommonOption) {
+	for _, opt := range opts {
+		_ = opt(m.cc)
+	}
+	m.applyOptionModify()
+}
+
+// FinishCallBack  call back
+func (m *CommonBlockManager) FinishCallBack(status int, buf *Buffer) {
+	if status == FinishStatus {
+		if m.cc.ExecFunc != nil && buf != nil && buf.Text() != "" {
+			text := buf.Document().Text
+			ctx := m.GetContext()
+			m.ExecTask(func() {
+				m.cc.ExecFunc(ctx, text)
+			})
+		}
+	}
+}
+
+// PreCheckCallBack change status pre check
+func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success bool) {
+	success = true
+	if buf != nil && m.Completion.Active() && m.Completion.Completions != nil {
+		if status == FinishStatus {
+			// interrupt enter key press
+			if m.Completion.EnterSelect(buf) {
+				success = false
+			}
+		}
+		if status == CancelStatus {
+			m.Completion.Completions.Update(*NewDocument())
+		}
+	}
+
+	// check input
+	if m.cc.ValidFunc != nil && buf != nil {
+		switch status {
+		case CancelStatus:
+			m.Validate.Text = ""
+		case FinishStatus, NormalStatus:
+			if err := m.cc.ValidFunc(status, buf.Document()); err != nil {
+				m.Validate.Text = err.Error()
+				success = false
+			} else {
+				m.Validate.Text = ""
+			}
+		}
+	}
+
+	return
+}
