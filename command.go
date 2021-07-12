@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/aggronmagi/promptx/internal/debug"
 	"github.com/spf13/pflag"
 )
 
@@ -269,30 +270,39 @@ func (c *Cmd) findSugest(line []rune, pos int, origLine string, cmds []*Cmd) (su
 	goNext := false
 	var nextCmd *Cmd
 	// match cmd completion
-	matchCmd := func(name []rune, child *Cmd, s *Suggest) {
-		if len(line) >= len(name) {
-			if HasPrefix(line, name) {
-
-				if s == nil {
-					s = child.suggest()
-				}
-				if len(line) > len(name) {
-					nextCmd = child
-					goNext = true
-				}
-				suggest = append(suggest, s)
-				offset = len(name)
+	matchCmd := func(name []rune, cmd *Cmd, s *Suggest) {
+		// complete current suggest
+		if len(line) < len(name) {
+			if !fuzzyMatchRunes(name, line) {
+				return
 			}
-		} else {
-			if fuzzyMatchRunes(name, line) {
-				if s == nil {
-					s = child.suggest()
-				}
-				suggest = append(suggest, s)
-				offset = len(line)
-				nextCmd = child
+			if s == nil {
+				s = cmd.suggest()
 			}
+			suggest = append(suggest, s)
+			offset = len(line)
+			nextCmd = cmd
+			return
 		}
+		// need find sub command or match current command
+		if !HasPrefix(line, name) {
+			return
+		}
+		cname := TrimFirstSpace(line)
+		debug.Println("check ", string(cname), string(name))
+		if !Equal(name, cname) {
+			return
+		}
+		if s == nil {
+			s = cmd.suggest()
+		}
+		if len(line) > len(name) {
+			nextCmd = cmd
+			goNext = true
+		}
+		suggest = append(suggest, s)
+		offset = len(name)
+		return
 	}
 	for _, child := range c.SubCommands {
 		// command name

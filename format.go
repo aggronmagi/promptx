@@ -111,6 +111,17 @@ func TrimSpaceLeft(in []rune) []rune {
 	return in[firstIndex:]
 }
 
+func TrimFirstSpace(in []rune) []rune {
+	firstIndex := len(in)
+	for i, r := range in {
+		if unicode.IsSpace(r) == true {
+			firstIndex = i
+			break
+		}
+	}
+	return in[:firstIndex]
+}
+
 type SugguestPrint []*Suggest
 
 func (s SugguestPrint) String() string {

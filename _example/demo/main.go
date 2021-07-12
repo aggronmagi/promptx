@@ -77,7 +77,32 @@ var cmds = []*promptx.Cmd{
 			fmt.Println("登陆成功")
 			return
 		},
+		SubCommands: []*promptx.Cmd{
+			&promptx.Cmd{
+				Name: "hello",
+				Help: "say hello",
+			},
+			&promptx.Cmd{
+				Name: "xxx",
+				Help: "xxx xxx",
+			},
+		},
 	},
+	&promptx.Cmd{
+		Name: "login2",
+		Help: "登陆游戏",
+		Func: func(c *promptx.CommandContext) {
+			c.Select("选择登陆的服务器", []string{
+				"开发服",
+				"测试服",
+				"体验服",
+			})
+			c.Select("选择登陆的xxxx服务器", []string{
+				"开发服x",
+				"测试服x",
+				"体验服x",
+			})
+
 			fmt.Println("登陆成功")
 			return
 		},
@@ -186,6 +211,7 @@ var cmds = []*promptx.Cmd{
 					o := flag.Lookup("o")
 					set.AddGoFlag(o)
 					set.StringP("tip", "t", "", "tip tip tip")
+					set.IntP("ssss", "v", 0, "fffffff - int")
 					return nil
 				},
 			},
