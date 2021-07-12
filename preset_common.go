@@ -27,6 +27,8 @@ func CommonOptionsOptionDeclareWithDefault() interface{} {
 		"Completion": []CompleteOption(nil),
 		// if command slice size > 0. it will ignore ExecFunc and ValidFunc options
 		"Commands": []*Cmd(nil),
+		// alway check input command
+		"AlwaysCheckCommand": bool(false),
 	}
 }
 
@@ -124,13 +126,14 @@ func (m *CommonBlockManager) completeCommand(in Document) []*Suggest {
 }
 
 func (m *CommonBlockManager) validCommand(status int, d *Document) error {
-	if status == NormalStatus {
+	// is check normal status
+	if status == NormalStatus && !m.cc.AlwaysCheckCommand {
 		return nil
 	}
 	if len(d.Text) == 0 {
 		return nil
 	}
-	cmds, _, err := m.root.ParseInput(d.Text, true)
+	cmds, _, err := m.root.ParseInput(d.Text, false)
 	if err != nil {
 		return err
 	}
@@ -226,6 +229,10 @@ func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 			} else {
 				m.Validate.Text = ""
 			}
+		}
+		// if valid failed. close completion.
+		if m.Completion.Active() && !success {
+			m.Completion.Completions.Reset()
 		}
 	}
 

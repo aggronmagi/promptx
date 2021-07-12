@@ -23,6 +23,8 @@ type CommonOptions struct {
 	Completion []CompleteOption
 	// if command slice size &gt; 0. it will ignore ExecFunc and ValidFunc options
 	Commands []*Cmd
+	// alway check input command
+	AlwaysCheckCommand bool
 }
 
 func (cc *CommonOptions) SetOption(opt CommonOption) {
@@ -153,6 +155,14 @@ func WithCommonOptionCommands(v ...*Cmd) CommonOption {
 	}
 }
 
+func WithCommonOptionAlwaysCheckCommand(v bool) CommonOption {
+	return func(cc *CommonOptions) CommonOption {
+		previous := cc.AlwaysCheckCommand
+		cc.AlwaysCheckCommand = v
+		return WithCommonOptionAlwaysCheckCommand(previous)
+	}
+}
+
 func NewCommonOptions(opts ...CommonOption) *CommonOptions {
 	cc := newDefaultCommonOptions()
 	for _, opt := range opts {
@@ -189,6 +199,7 @@ func newDefaultCommonOptions() *CommonOptions {
 		WithCommonOptionCancelKey(ControlC),
 		WithCommonOptionCompletion(nil...),
 		WithCommonOptionCommands(nil...),
+		WithCommonOptionAlwaysCheckCommand(false),
 	} {
 		_ = opt(cc)
 	}
