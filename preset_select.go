@@ -84,23 +84,26 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 // FinishCallBack  call back
 func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) {
 	if status == FinishStatus {
+		// set not draw new line
+		m.SetChangeStatus(1)
+
 		if m.cc.FinishFunc != nil {
 			//m.ExecTask(func() {
 			m.cc.FinishFunc(m.Select.GetSelects())
 			//})
 		}
-		// set not draw new line
-		m.SetChangeStatus(1)
 		m.cond.Signal()
 	}
 	if status == CancelStatus {
+		// set not draw new line
+		m.SetChangeStatus(1)
+
 		if m.cc.FinishFunc != nil {
 			//m.ExecTask(func() {
 			m.cc.FinishFunc(nil)
 			//})
 		}
-		// set not draw new line
-		m.SetChangeStatus(1)
+
 		m.cond.Signal()
 	}
 }

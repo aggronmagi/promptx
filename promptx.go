@@ -59,6 +59,7 @@ type Promptx struct {
 	m       sync.Mutex
 	cond    *sync.Cond
 	notRead atomic.Bool
+	syncCh  chan struct{}
 
 	// is start run
 	start atomic.Bool
@@ -85,6 +86,7 @@ func NewPromptx(opts ...PromptOption) *Promptx {
 	p.m.Lock()
 	p.t = NewTerminal(p.cc.Stdin, p.cc.Stdout, p.cc.ChanSize)
 	p.mgr.SetWriter(NewConsoleWriter(p.t))
+	p.syncCh = make(chan struct{}, 1)
 	return p
 }
 
@@ -164,10 +166,10 @@ func (p *Promptx) run() (err error) {
 			case f := <-p.execCh:
 				go func() {
 					f()
-					if p.exchange.Load() {
-						debug.Println("after call exchange next.")
-						p.exchangeNext(true)
-					}
+					// if p.exchange.Load() {
+					// 	debug.Println("after call exchange next.")
+					// 	p.exchangeNext(true)
+					// }
 					p.cond.Signal()
 				}()
 			}
@@ -191,6 +193,9 @@ func (p *Promptx) run() (err error) {
 				debug.Println("recv exit and not change next screen")
 				return
 			}
+			p.exchangeNext(true)
+			p.exchange.Store(false)
+		case <-p.syncCh:
 			p.exchangeNext(true)
 			p.exchange.Store(false)
 		case size := <-winSize:
@@ -264,6 +269,7 @@ func (p *Promptx) ChangeMode(next BlocksManager) {
 	p.next = next
 	p.backup = p.mgr
 	p.cond.Signal()
+	p.syncCh <- struct{}{}
 }
 
 // RevertMode revert last mode to next
@@ -375,7 +381,8 @@ func (p *Promptx) Input(tip string, opts ...InputOption) (result string, err err
 	input := NewInputManager(&newCC)
 	p.ChangeMode(input)
 	input.cond.Wait()
-	p.RevertMode()
+	p.ResetDefaultMode()
+	//p.RevertMode()
 	// Set exhange state to refresh when command exec finish
 	p.exchange.Store(true)
 	return
@@ -413,7 +420,8 @@ func (p *Promptx) Select(tip string, list []string, opts ...SelectOption) (resul
 	sel := NewSelectManager(&newCC)
 	p.ChangeMode(sel)
 	sel.cond.Wait()
-	p.RevertMode()
+	p.ResetDefaultMode()
+	// p.RevertMode()
 	// Set exhange state to refresh when command exec finish
 	p.exchange.Store(true)
 	return
@@ -445,7 +453,8 @@ func (p *Promptx) MulSel(tip string, list []string, opts ...SelectOption) (resul
 	sel := NewSelectManager(&newCC)
 	p.ChangeMode(sel)
 	sel.cond.Wait()
-	p.RevertMode()
+	p.ResetDefaultMode()
+	// p.RevertMode()
 	// Set exhange state to refresh when command exec finish
 	p.exchange.Store(true)
 	return

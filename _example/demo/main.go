@@ -67,6 +67,17 @@ var cmds = []*promptx.Cmd{
 				"测试服",
 				"体验服",
 			})
+			c.Println("xxx -  x")
+			c.Select("xxxxx服务器", []string{
+				"开发服x2",
+				"测试服x2",
+				"体验服x2",
+			})
+
+			fmt.Println("登陆成功")
+			return
+		},
+	},
 			fmt.Println("登陆成功")
 			return
 		},
