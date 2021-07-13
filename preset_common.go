@@ -3,6 +3,8 @@ package promptx
 import (
 	"fmt"
 	"strings"
+
+	"github.com/aggronmagi/promptx/internal/debug"
 )
 
 // CommonOptionsOptionDeclareWithDefault promptx options
@@ -199,15 +201,21 @@ func (m *CommonBlockManager) SetPrompt(text string) {
 			Bold:      false,
 		},
 	}
+	m.PreWords.test = nil
+
 	return
 }
 
 // SetPromptWords update prompt string. custom display.
-func (m *CommonBlockManager) SetPromptWords(words []*Word) {
+func (m *CommonBlockManager) SetPromptWords(words ...*Word) {
 	if len(words) < 1 {
 		return
 	}
 	m.PreWords.Words = words
+	debug.Println("update prompts words", words)
+	m.PreWords.test = func() {
+		debug.Println("get prompts words", words)
+	}
 }
 
 func (m *CommonBlockManager) SetOption(opt CommonOption) {

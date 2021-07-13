@@ -210,14 +210,20 @@ func (c *Cmd) findChildCmd(name string) *Cmd {
 func (c *Cmd) ParseInput(line string, reset bool) (cmds []*Cmd, args []string, err error) {
 	fields := strings.Fields(line)
 	father := c
+	discard := -1
 	for k, arg := range fields {
 		if cmd := father.findChildCmd(arg); cmd != nil {
 			cmds = append(cmds, cmd)
 			father = cmd
+			discard = k + 1
 			continue
 		}
-		fields = fields[k:]
+		discard = k
 		break
+	}
+	debug.Println("discard", discard)
+	if discard >= 0 {
+		fields = fields[discard:]
 	}
 	set := pflag.NewFlagSet("root", pflag.ContinueOnError)
 	if c.set != nil {

@@ -21,6 +21,8 @@ type EmptyBlocks struct {
 	keyBind map[Key]KeyBindFunc
 	// is draw
 	isDraw func(status int) bool
+	//
+	test func()
 }
 
 // InitBlocks init blocks
@@ -59,6 +61,9 @@ func (m *EmptyBlocks) Render(ctx PrintContext, preCursor int) (cursor int) {
 
 // OnEvent deal console key press
 func (m *EmptyBlocks) OnEvent(ctx PressContext, key Key, in []byte) (exit bool) {
+	if m.test != nil {
+		m.test()
+	}
 	if m.keyBind == nil {
 		return
 	}

@@ -168,6 +168,34 @@ var cmds = []*promptx.Cmd{
 		},
 	},
 	&promptx.Cmd{
+		Name: "prompt",
+		Help: "update prompt words",
+		Func: func(c *promptx.CommandContext) {
+			prompt := ""
+			c.Println(c.Args)
+			if len(c.Args) > 0 {
+				prompt = c.Args[0]
+			} else {
+				var eof error
+				prompt, eof = c.Input("input prompt")
+				if eof != nil {
+					return
+				}
+			}
+			c.Println("---", prompt)
+
+			c.SetPromptWords(&promptx.AskWord, &promptx.Word{
+				Text:      prompt + " ",
+				TextColor: promptx.Red,
+			})
+			// NOTE: refresh
+			c.Println("xxx")
+			c.Println("xxx")
+			time.Sleep(time.Second * 5)
+			c.Println("fiish")
+		},
+	},
+	&promptx.Cmd{
 		Name:    "setpassword",
 		Aliases: []string{"password"},
 		Help:    "modify password",

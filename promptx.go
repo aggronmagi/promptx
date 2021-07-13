@@ -55,11 +55,12 @@ type Promptx struct {
 	// mgr,next value protect
 	rw sync.RWMutex
 	// for exchange other mode, exec should run in another gorountine.
-	execCh  chan func()
-	m       sync.Mutex
-	cond    *sync.Cond
-	notRead atomic.Bool
-	syncCh  chan struct{}
+	execCh    chan func()
+	m         sync.Mutex
+	cond      *sync.Cond
+	notRead   atomic.Bool
+	syncCh    chan struct{}
+	refreshCh chan struct{}
 
 	// is start run
 	start atomic.Bool
@@ -87,6 +88,7 @@ func NewPromptx(opts ...PromptOption) *Promptx {
 	p.t = NewTerminal(p.cc.Stdin, p.cc.Stdout, p.cc.ChanSize)
 	p.mgr.SetWriter(NewConsoleWriter(p.t))
 	p.syncCh = make(chan struct{}, 1)
+	p.refreshCh = make(chan struct{}, 1)
 	return p
 }
 
@@ -166,10 +168,9 @@ func (p *Promptx) run() (err error) {
 			case f := <-p.execCh:
 				go func() {
 					f()
-					// if p.exchange.Load() {
-					// 	debug.Println("after call exchange next.")
-					// 	p.exchangeNext(true)
-					// }
+					if p.exchange.Load() {
+						p.refreshCh <- struct{}{}
+					}
 					p.cond.Signal()
 				}()
 			}
@@ -195,6 +196,8 @@ func (p *Promptx) run() (err error) {
 			}
 			p.exchangeNext(true)
 			p.exchange.Store(false)
+		case <-p.refreshCh:
+			p.getCurrent().Render(NormalStatus)
 		case <-p.syncCh:
 			p.exchangeNext(true)
 			p.exchange.Store(false)
@@ -345,19 +348,20 @@ func (p *Promptx) ClearTitle() {
 
 // SetPrompt update prompt.
 func (p *Promptx) SetPrompt(prompt string) {
-	if iface, ok := p.mgr.(interface {
+	if iface, ok := p.cc.BlocksManager.(interface {
 		SetPrompt(prompt string)
 	}); ok {
 		iface.SetPrompt(prompt)
+		// p.syncCh <- struct{}{}
 	}
 }
 
 // SetPromptWords update prompt string. custom display.
-func (p *Promptx) SetPromptWords(words []*Word) {
-	if iface, ok := p.mgr.(interface {
-		SetPromptWords(words []*Word)
+func (p *Promptx) SetPromptWords(words ...*Word) {
+	if iface, ok := p.cc.BlocksManager.(interface {
+		SetPromptWords(words ...*Word)
 	}); ok {
-		iface.SetPromptWords(words)
+		iface.SetPromptWords(words...)
 	}
 }
 
@@ -479,9 +483,9 @@ type wrapWriter struct {
 }
 
 func (w *wrapWriter) Write(b []byte) (n int, err error) {
-	if w.p.notRead.Load() {
-		return w.target.Write(b)
-	}
+	// if w.p.notRead.Load() {
+	// 	return w.target.Write(b)
+	// }
 	// 	atomic.StorePointer((*unsafe.Pointer)(unsafe.Pointer(&Current)), unsafe.Pointer(Updating))
 
 	// (BlocksManager)(atomic.LoadPointer((*unsafe.Pointer)(unsafe.Pointer(&Current))))
@@ -492,6 +496,7 @@ func (w *wrapWriter) Write(b []byte) (n int, err error) {
 		debug.Println("after call exchange next.")
 		w.p.exchangeNext(false)
 	}
+
 	w.p.mgr.Render(NormalStatus)
 	return n, err
 }
