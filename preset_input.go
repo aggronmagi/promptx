@@ -22,13 +22,43 @@ func InputOptionsOptionDeclareWithDefault() interface{} {
 		"FinishFunc":      (func(input string, eof error))(nil),
 		"FinishKey":       Key(Enter),
 		"CancelKey":       Key(ControlC),
+		// cresult display
+		"ResultText":      InputFinishTextFunc(defaultInputFinishText),
+		"ResultTextColor": Color(Blue),
+		"ResultBGColor":   Color(DefaultColor),
 	}
+}
+
+// InputFinishTextFunc modify finish text display
+type InputFinishTextFunc func(cc *InputOptions, status int, doc *Document) (words []*Word)
+
+func defaultInputFinishText(cc *InputOptions, status int, doc *Document) (words []*Word) {
+
+	if status == FinishStatus {
+		words = append(words, &SuccessWord)
+	} else {
+		words = append(words, &FailureWord)
+	}
+	words = append(words, &Word{
+		Text:      cc.PrefixText,
+		TextColor: cc.PrefixTextColor,
+		BGColor:   cc.PrefixBGColor,
+		Bold:      false,
+	})
+
+	words = append(words, &Word{
+		Text:      doc.Text,
+		TextColor: cc.ResultTextColor,
+		BGColor:   cc.ResultBGColor,
+		Bold:      false,
+	})
+
+	return
 }
 
 type InputBlockManager struct {
 	*BlocksBaseManager
-	Tip      *BlocksSuffix
-	Prefix   *BlocksPrefix
+	PreWords *BlocksWords
 	Input    *BlocksEmacsBuffer
 	Validate *BlocksNewLine
 	cc       *InputOptions
@@ -38,28 +68,38 @@ type InputBlockManager struct {
 
 // NewInputManager new input text
 func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
+	cc.TipText = deleteBreakLineCharacters(cc.TipText)
 	m = &InputBlockManager{
 		BlocksBaseManager: &BlocksBaseManager{},
-		Tip:               &BlocksSuffix{},
-		Prefix:            &BlocksPrefix{},
+		PreWords:          &BlocksWords{},
 		Input:             &BlocksEmacsBuffer{},
 		Validate:          &BlocksNewLine{},
 		cc:                cc,
 	}
-	m.Tip.Text = cc.TipText
-	m.Tip.TextColor = cc.TipTextColor
-	m.Tip.BGColor = cc.TipBGColor
-	m.Prefix.Text = cc.PrefixText
-	m.Prefix.TextColor = cc.PrefixTextColor
-	m.Prefix.BGColor = cc.PrefixBGColor
+	if len(cc.TipText) > 0 {
+		m.PreWords.Words = append(m.PreWords.Words, &Word{
+			Text:      cc.TipText,
+			TextColor: cc.TipTextColor,
+			BGColor:   cc.TipBGColor,
+			Bold:      false,
+		})
+		m.PreWords.Words = append(m.PreWords.Words, &NewLineWord)
+	}
+	m.PreWords.Words = append(m.PreWords.Words, &AskWord)
+	m.PreWords.Words = append(m.PreWords.Words, &Word{
+		Text:      cc.PrefixText,
+		TextColor: cc.PrefixTextColor,
+		BGColor:   cc.PrefixBGColor,
+		Bold:      false,
+	})
+
 	m.Validate.TextColor = cc.ValidTextColor
 	m.Validate.BGColor = cc.ValidBGColor
 
 	m.SetCancelKey(cc.CancelKey)
 	m.SetFinishKey(cc.FinishKey)
 
-	m.AddMirrorMode(m.Tip)
-	m.AddMirrorMode(m.Prefix)
+	m.AddMirrorMode(m.PreWords)
 	m.AddMirrorMode(m.Input)
 	m.AddMirrorMode(m.Validate)
 
@@ -75,6 +115,7 @@ func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
 
 // FinishCallBack  call back
 func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) {
+
 	if status == FinishStatus {
 		// set not draw new line
 		m.SetChangeStatus(1)
@@ -84,6 +125,7 @@ func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) {
 			m.cc.FinishFunc(text, nil)
 			//})
 		}
+
 		m.cond.Signal()
 	}
 	if status == CancelStatus {
@@ -115,5 +157,16 @@ func (m *InputBlockManager) PreCheckCallBack(status int, buf *Buffer) (success b
 			}
 		}
 	}
+	if !success {
+		return
+	}
+	if status == FinishStatus || status == CancelStatus {
+		// hide blocks
+		m.Input.SetActive(false)
+		m.Validate.SetActive(false)
+
+		m.PreWords.Words = m.cc.ResultText(m.cc, status, buf.Document())
+	}
+
 	return
 }

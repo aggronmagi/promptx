@@ -1,8 +1,102 @@
 package promptx
 
 import (
+	"strings"
+
 	runewidth "github.com/mattn/go-runewidth"
 )
+
+// Word terminal displayed text
+type Word struct {
+	// content
+	Text string
+	// colors
+	TextColor Color
+	BGColor   Color
+	// bold font
+	Bold bool
+}
+
+// Width calc display pos
+func (w *Word) Render(ctx PrintContext, preCursor int) (nextCursor int) {
+	if len(w.Text) == 0 {
+		return preCursor
+	}
+	nextCursor = preCursor
+	list := strings.Split(w.Text, "\n")
+	for k, v := range list {
+		if k > 0 {
+			nextCursor += ctx.Columns() - nextCursor%ctx.Columns()
+		}
+		nextCursor += runewidth.StringWidth(v)
+	}
+	if ctx.Prepare() {
+		return
+	}
+	out := ctx.Writer()
+	out.SetColor(w.TextColor, w.BGColor, w.Bold)
+	out.WriteStr(w.Text)
+	out.SetColor(DefaultColor, DefaultColor, false)
+	// last one is '\n',backword text
+	if len(list[len(list)-1]) == 0 {
+		out.CursorBackward(ctx.Columns())
+	}
+	return
+}
+
+// preset word for display select,input prefix word.
+var (
+	// SuccessWord success word
+	SuccessWord = Word{
+		Text:      "✔ ",
+		TextColor: Green,
+		BGColor:   DefaultColor,
+		Bold:      false,
+	}
+	// FailureWord failure word
+	FailureWord = Word{
+		Text:      "✗ ",
+		TextColor: Red,
+		BGColor:   DefaultColor,
+		Bold:      false,
+	}
+	AskWord = Word{
+		Text:      "? ",
+		TextColor: Blue,
+		BGColor:   DefaultColor,
+		Bold:      false,
+	}
+	SelectWord = Word{
+		Text:      "▸ ",
+		TextColor: DefaultColor,
+		BGColor:   DefaultColor,
+		Bold:      false,
+	}
+	NewLineWord = Word{
+		Text:      "\n",
+		TextColor: 0,
+		BGColor:   0,
+		Bold:      false,
+	}
+)
+
+// BlocksWords words display
+type BlocksWords struct {
+	EmptyBlocks
+	Words []*Word
+}
+
+// Render render to console
+func (c *BlocksWords) Render(ctx PrintContext, preCursor int) (nextCursor int) {
+	if len(c.Words) == 0 {
+		return preCursor
+	}
+	nextCursor = preCursor
+	for _, v := range c.Words {
+		nextCursor = v.Render(ctx, nextCursor)
+	}
+	return
+}
 
 // BlocksPrefix render line prefix
 type BlocksPrefix struct {
@@ -12,6 +106,7 @@ type BlocksPrefix struct {
 	// colors
 	TextColor Color
 	BGColor   Color
+	Words     []*Word
 }
 
 // Render render to console
@@ -104,41 +199,4 @@ func (c *BlocksNewLine) Render(ctx PrintContext, preCursor int) int {
 	// out.CursorBackward(col)
 
 	return newCursor
-}
-
-// BlocksStatusPrefix render line prefix with status
-type BlocksStatusPrefix struct {
-	EmptyBlocks
-	// context
-	Status   bool
-	FailText string
-	SucText  string
-	// colors
-	FailTextColor Color
-	FailBGColor   Color
-	SucTextColor  Color
-	SucBGColor    Color
-}
-
-// Render render to console
-func (c *BlocksStatusPrefix) Render(ctx PrintContext, preCursor int) int {
-	text := c.FailText
-	textColor := c.FailTextColor
-	bgColor := c.FailBGColor
-	if c.Status {
-		text = c.SucText
-		textColor = c.SucTextColor
-		bgColor = c.SucBGColor
-	}
-	if len(text) == 0 {
-		return preCursor
-	}
-	if ctx.Prepare() {
-		return runewidth.StringWidth(text) + preCursor
-	}
-	out := ctx.Writer()
-	out.SetColor(textColor, bgColor, false)
-	out.WriteStr(text)
-	out.SetColor(DefaultColor, DefaultColor, false)
-	return runewidth.StringWidth(text) + preCursor
 }

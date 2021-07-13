@@ -34,6 +34,8 @@ type Context interface {
 	ClearTitle()
 	// SetPrompt update prompt string. prompt will auto add space suffix.
 	SetPrompt(prompt string)
+	// SetPromptWords update prompt string. custom display.
+	SetPromptWords(words []*Word)
 	// Print = fmt.Print
 	Print(v ...interface{})
 	// Printf = fmt.Printf

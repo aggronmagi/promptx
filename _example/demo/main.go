@@ -90,18 +90,26 @@ var cmds = []*promptx.Cmd{
 	},
 	&promptx.Cmd{
 		Name: "login2",
-		Help: "登陆游戏",
+		Help: "测试相似命令(test similar command)",
 		Func: func(c *promptx.CommandContext) {
-			c.Select("选择登陆的服务器", []string{
-				"开发服",
-				"测试服",
-				"体验服",
-			})
-			c.Select("选择登陆的xxxx服务器", []string{
-				"开发服x",
-				"测试服x",
-				"体验服x",
-			})
+			c.Select(
+				"选择登陆的服务器",
+				[]string{
+					"开发服",
+					"测试服",
+					"体验服",
+				},
+				promptx.WithSelectOptionShowHelpText(true),
+			)
+			c.Select(
+				"选择登陆的xxxx服务器",
+				[]string{
+					"开发服x",
+					"测试服x",
+					"体验服x",
+				},
+				promptx.WithSelectOptionShowHelpText(true),
+			)
 
 			fmt.Println("登陆成功")
 			return
@@ -185,6 +193,17 @@ var cmds = []*promptx.Cmd{
 		Name: "help",
 		Help: "print help info",
 		Func: func(c *promptx.CommandContext) {
+			input, err := c.Input("input limit: ",
+				promptx.WithInputOptionTipText("tip tip tip"),
+				promptx.WithInputOptionValidFunc(func(d *promptx.Document) error {
+					_, err := strconv.Atoi(d.Text)
+					return err
+				}),
+			)
+			if err != nil {
+				return
+			}
+			limit, _ := strconv.Atoi(input)
 			go func() {
 				v := 0
 				for {
@@ -192,6 +211,9 @@ var cmds = []*promptx.Cmd{
 					case <-time.After(time.Second):
 						v++
 						fmt.Fprintln(c.Stdout(), "xx---async", v)
+						if v >= limit {
+							return
+						}
 					}
 				}
 			}()
@@ -257,6 +279,7 @@ func main() {
 		promptx.WithCommonOpions(
 			// install commands
 			promptx.WithCommonOptionCommands(cmds...),
+			// promptx.WithCommonOptionTipText("tip tip tip"),
 		),
 	)
 	// set log writer

@@ -42,8 +42,6 @@ type BlocksManager interface {
 
 	SetExecContext(ctx Context)
 	GetContext() Context
-	//
-	SetPrompt(prompt string)
 }
 
 var _ BlocksManager = &BlocksBaseManager{}
@@ -462,7 +460,4 @@ func (m *BlocksBaseManager) PrepareArea(lines int) {
 	for i := 0; i < lines; i++ {
 		m.out.ScrollUp()
 	}
-}
-
-func (m *BlocksBaseManager) SetPrompt(prompt string) {
 }

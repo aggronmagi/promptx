@@ -18,6 +18,10 @@ type InputOptions struct {
 	FinishFunc      func(input string, eof error)
 	FinishKey       Key
 	CancelKey       Key
+	// cresult display
+	ResultText      InputFinishTextFunc
+	ResultTextColor Color
+	ResultBGColor   Color
 }
 
 func (cc *InputOptions) SetOption(opt InputOption) {
@@ -132,6 +136,30 @@ func WithInputOptionCancelKey(v Key) InputOption {
 	}
 }
 
+func WithInputOptionResultText(v InputFinishTextFunc) InputOption {
+	return func(cc *InputOptions) InputOption {
+		previous := cc.ResultText
+		cc.ResultText = v
+		return WithInputOptionResultText(previous)
+	}
+}
+
+func WithInputOptionResultTextColor(v Color) InputOption {
+	return func(cc *InputOptions) InputOption {
+		previous := cc.ResultTextColor
+		cc.ResultTextColor = v
+		return WithInputOptionResultTextColor(previous)
+	}
+}
+
+func WithInputOptionResultBGColor(v Color) InputOption {
+	return func(cc *InputOptions) InputOption {
+		previous := cc.ResultBGColor
+		cc.ResultBGColor = v
+		return WithInputOptionResultBGColor(previous)
+	}
+}
+
 func NewInputOptions(opts ...InputOption) *InputOptions {
 	cc := newDefaultInputOptions()
 	for _, opt := range opts {
@@ -166,6 +194,9 @@ func newDefaultInputOptions() *InputOptions {
 		WithInputOptionFinishFunc(nil),
 		WithInputOptionFinishKey(Enter),
 		WithInputOptionCancelKey(ControlC),
+		WithInputOptionResultText(defaultInputFinishText),
+		WithInputOptionResultTextColor(Blue),
+		WithInputOptionResultBGColor(DefaultColor),
 	} {
 		_ = opt(cc)
 	}

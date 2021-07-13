@@ -6,18 +6,26 @@ package promptx
 var _ = SelectOptionsOptionDeclareWithDefault()
 
 type SelectOptions struct {
-	Options                      []*Suggest
-	RowsLimit                    int
-	FinishFunc                   func(sels []int)
-	Multi                        bool
-	FinishKey                    Key
-	CancelKey                    Key
-	TipText                      string
-	TipTextColor                 Color
-	TipBGColor                   Color
-	ValidFunc                    func(sels []int) error
-	ValidTextColor               Color
-	ValidBGColor                 Color
+	Options    []*Suggest
+	RowsLimit  int
+	FinishFunc func(sels []int)
+	Multi      bool
+	FinishKey  Key
+	CancelKey  Key
+	// select tip info
+	TipText      string
+	TipTextColor Color
+	TipBGColor   Color
+	// help text info
+	ShowHelpText  bool
+	HelpText      SelHelpTextFunc
+	HelpTextColor Color
+	HelpBGColor   Color
+	// valid info
+	ValidFunc      func(sels []int) error
+	ValidTextColor Color
+	ValidBGColor   Color
+	// select options info
 	SuggestionTextColor          Color
 	SuggestionBGColor            Color
 	SelectedSuggestionTextColor  Color
@@ -28,6 +36,12 @@ type SelectOptions struct {
 	SelectedDescriptionBGColor   Color
 	ScrollbarThumbColor          Color
 	ScrollbarBGColor             Color
+	// finish text show
+	FinishText SelFinishTextFunc
+	// contrl selct result display select context
+	ResultShowItem  bool
+	ResultTextColor Color
+	ResultBGColor   Color
 }
 
 func (cc *SelectOptions) SetOption(opt SelectOption) {
@@ -115,6 +129,38 @@ func WithSelectOptionTipBGColor(v Color) SelectOption {
 		previous := cc.TipBGColor
 		cc.TipBGColor = v
 		return WithSelectOptionTipBGColor(previous)
+	}
+}
+
+func WithSelectOptionShowHelpText(v bool) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.ShowHelpText
+		cc.ShowHelpText = v
+		return WithSelectOptionShowHelpText(previous)
+	}
+}
+
+func WithSelectOptionHelpText(v SelHelpTextFunc) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.HelpText
+		cc.HelpText = v
+		return WithSelectOptionHelpText(previous)
+	}
+}
+
+func WithSelectOptionHelpTextColor(v Color) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.HelpTextColor
+		cc.HelpTextColor = v
+		return WithSelectOptionHelpTextColor(previous)
+	}
+}
+
+func WithSelectOptionHelpBGColor(v Color) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.HelpBGColor
+		cc.HelpBGColor = v
+		return WithSelectOptionHelpBGColor(previous)
 	}
 }
 
@@ -222,6 +268,38 @@ func WithSelectOptionScrollbarBGColor(v Color) SelectOption {
 	}
 }
 
+func WithSelectOptionFinishText(v SelFinishTextFunc) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.FinishText
+		cc.FinishText = v
+		return WithSelectOptionFinishText(previous)
+	}
+}
+
+func WithSelectOptionResultShowItem(v bool) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.ResultShowItem
+		cc.ResultShowItem = v
+		return WithSelectOptionResultShowItem(previous)
+	}
+}
+
+func WithSelectOptionResultTextColor(v Color) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.ResultTextColor
+		cc.ResultTextColor = v
+		return WithSelectOptionResultTextColor(previous)
+	}
+}
+
+func WithSelectOptionResultBGColor(v Color) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.ResultBGColor
+		cc.ResultBGColor = v
+		return WithSelectOptionResultBGColor(previous)
+	}
+}
+
 func NewSelectOptions(opts ...SelectOption) *SelectOptions {
 	cc := newDefaultSelectOptions()
 	for _, opt := range opts {
@@ -253,6 +331,10 @@ func newDefaultSelectOptions() *SelectOptions {
 		WithSelectOptionTipText(""),
 		WithSelectOptionTipTextColor(Yellow),
 		WithSelectOptionTipBGColor(DefaultColor),
+		WithSelectOptionShowHelpText(false),
+		WithSelectOptionHelpText(defaultSelHelpText),
+		WithSelectOptionHelpTextColor(DefaultColor),
+		WithSelectOptionHelpBGColor(DefaultColor),
 		WithSelectOptionValidFunc(nil),
 		WithSelectOptionValidTextColor(Red),
 		WithSelectOptionValidBGColor(DefaultColor),
@@ -266,6 +348,10 @@ func newDefaultSelectOptions() *SelectOptions {
 		WithSelectOptionSelectedDescriptionBGColor(Cyan),
 		WithSelectOptionScrollbarThumbColor(DarkGray),
 		WithSelectOptionScrollbarBGColor(Cyan),
+		WithSelectOptionFinishText(defaultSelFinishText),
+		WithSelectOptionResultShowItem(true),
+		WithSelectOptionResultTextColor(Blue),
+		WithSelectOptionResultBGColor(DefaultColor),
 	} {
 		_ = opt(cc)
 	}

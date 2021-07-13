@@ -3,6 +3,9 @@
 * promptx
 Library for creating interactive cli applications with powerful interactive prompts.
 
+** wait
+1. history
+
 ** Copy File List
 | dir-or-files                   | source-repo | modify       |
 |--------------------------------+-------------+--------------|

@@ -3,7 +3,7 @@ package promptx
 ////////////////////////////////////////////////////////////////////////////////
 // Mode Interface
 
-// ConsoleBlocks Mode Interface
+// ConsoleBlocks Terminal block interface. Used for combination providing functions.
 type ConsoleBlocks interface {
 	InitBlocks()
 	Active() bool

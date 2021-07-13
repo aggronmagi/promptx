@@ -345,7 +345,20 @@ func (p *Promptx) ClearTitle() {
 
 // SetPrompt update prompt.
 func (p *Promptx) SetPrompt(prompt string) {
-	p.mgr.SetPrompt(prompt)
+	if iface, ok := p.mgr.(interface {
+		SetPrompt(prompt string)
+	}); ok {
+		iface.SetPrompt(prompt)
+	}
+}
+
+// SetPromptWords update prompt string. custom display.
+func (p *Promptx) SetPromptWords(words []*Word) {
+	if iface, ok := p.mgr.(interface {
+		SetPromptWords(words []*Word)
+	}); ok {
+		iface.SetPromptWords(words)
+	}
 }
 
 // Print = fmt.Print

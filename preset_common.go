@@ -35,8 +35,8 @@ func CommonOptionsOptionDeclareWithDefault() interface{} {
 // CommonBlockManager default block manager.
 type CommonBlockManager struct {
 	*BlocksBaseManager
-	Tip        *BlocksSuffix
-	Prefix     *BlocksPrefix
+	Tip        *BlocksWords
+	PreWords   *BlocksWords
 	Input      *BlocksEmacsBuffer
 	Validate   *BlocksNewLine
 	Completion *BlocksCompletion
@@ -47,17 +47,18 @@ type CommonBlockManager struct {
 // NewDefaultBlockManger default blocks manager.
 func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 	cc := NewCommonOptions(opts...)
+	cc.TipText = deleteBreakLineCharacters(cc.TipText)
 	m = &CommonBlockManager{
 		BlocksBaseManager: &BlocksBaseManager{},
-		Tip:               &BlocksSuffix{},
-		Prefix:            &BlocksPrefix{},
+		Tip:               &BlocksWords{},
+		PreWords:          &BlocksWords{},
 		Input:             &BlocksEmacsBuffer{},
 		Validate:          &BlocksNewLine{},
 		Completion:        &BlocksCompletion{},
 		cc:                cc,
 	}
 	m.AddMirrorMode(m.Tip)
-	m.AddMirrorMode(m.Prefix)
+	m.AddMirrorMode(m.PreWords)
 	m.AddMirrorMode(m.Input)
 	m.AddMirrorMode(m.Validate)
 	m.AddMirrorMode(m.Completion)
@@ -75,12 +76,24 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 
 func (m *CommonBlockManager) applyOptionModify() {
 	cc := m.cc
-	m.Tip.Text = cc.TipText
-	m.Tip.TextColor = cc.TipTextColor
-	m.Tip.BGColor = cc.TipBGColor
-	m.Prefix.Text = cc.PrefixText
-	m.Prefix.TextColor = cc.PrefixTextColor
-	m.Prefix.BGColor = cc.PrefixBGColor
+
+	if len(cc.TipText) > 0 {
+		m.Tip.Words = append(m.Tip.Words, &Word{
+			Text:      cc.TipText,
+			TextColor: cc.TipTextColor,
+			BGColor:   cc.TipBGColor,
+			Bold:      false,
+		})
+		m.Tip.Words = append(m.Tip.Words, &NewLineWord)
+	}
+
+	m.PreWords.Words = append(m.PreWords.Words, &Word{
+		Text:      cc.PrefixText,
+		TextColor: cc.PrefixTextColor,
+		BGColor:   cc.PrefixBGColor,
+		Bold:      false,
+	})
+
 	m.Validate.TextColor = cc.ValidTextColor
 	m.Validate.BGColor = cc.ValidBGColor
 
@@ -174,7 +187,27 @@ func (m *CommonBlockManager) SetPrompt(text string) {
 	if !strings.HasSuffix(text, " ") {
 		text += " "
 	}
-	m.Prefix.Text = text
+	if len(m.PreWords.Words) == 1 {
+		m.PreWords.Words[0].Text = text
+		return
+	}
+	m.PreWords.Words = []*Word{
+		{
+			Text:      text,
+			TextColor: m.cc.PrefixTextColor,
+			BGColor:   m.cc.PrefixBGColor,
+			Bold:      false,
+		},
+	}
+	return
+}
+
+// SetPromptWords update prompt string. custom display.
+func (m *CommonBlockManager) SetPromptWords(words []*Word) {
+	if len(words) < 1 {
+		return
+	}
+	m.PreWords.Words = words
 }
 
 func (m *CommonBlockManager) SetOption(opt CommonOption) {
@@ -234,6 +267,9 @@ func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 		if m.Completion.Active() && !success {
 			m.Completion.Completions.Reset()
 		}
+	}
+	if !success {
+		return
 	}
 
 	return
