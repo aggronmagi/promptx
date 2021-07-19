@@ -1,4 +1,4 @@
-package promptx
+package completion
 
 import "strings"
 
@@ -49,7 +49,7 @@ func fuzzyMatch(s, sub string) bool {
 	return true
 }
 
-func fuzzyMatchRunes(sChars, sub []rune) bool {
+func FuzzyMatchRunes(sChars, sub []rune) bool {
 	sIdx := 0
 
 	// https://staticcheck.io/docs/checks#S1029

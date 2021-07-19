@@ -8,6 +8,20 @@ import (
 	runewidth "github.com/mattn/go-runewidth"
 )
 
+const (
+	shortenSuffix = "..."
+	leftPrefix    = " "
+	leftSuffix    = " "
+	rightPrefix   = " "
+	rightSuffix   = " "
+)
+
+var (
+	leftMargin       = runewidth.StringWidth(leftPrefix + leftSuffix)
+	rightMargin      = runewidth.StringWidth(rightPrefix + rightSuffix)
+	completionMargin = leftMargin + rightMargin
+)
+
 func deleteBreakLineCharacters(s string) string {
 	s = strings.Replace(s, "\n", "", -1)
 	s = strings.Replace(s, "\r", "", -1)

@@ -1,9 +1,13 @@
 package promptx
 
 import (
+	completion "github.com/aggronmagi/promptx/completion"
 	"github.com/aggronmagi/promptx/internal/debug"
 	runewidth "github.com/mattn/go-runewidth"
 )
+
+// Completer should return the suggest item from Document.
+type Completer func(in Document) []*Suggest
 
 // CompleteOptionsOptionDeclareWithDefault promptx options
 // generate by https://github.com/timestee/optiongen
@@ -43,7 +47,7 @@ type BlocksCompletion struct {
 func (c *BlocksCompletion) ApplyOptions(opt ...CompleteOption) {
 	c.Cfg.ApplyOption(opt...)
 	if c.Cfg.Completer != nil {
-		c.Completions = NewCompletionManager(c.Cfg.Completer, uint16(c.Cfg.CompleteMax))
+		c.Completions = completion.NewCompletionManager(c.Cfg.CompleteMax)
 		c.SetActive(true)
 		debug.Println("enable compeltion")
 	} else {
@@ -107,8 +111,8 @@ func (c *BlocksCompletion) Render(ctx PrintContext, preCursor int) int {
 	}
 
 	windowHeight := len(suggestions)
-	if windowHeight > int(completions.max) {
-		windowHeight = int(completions.max)
+	if windowHeight > int(completions.Max) {
+		windowHeight = int(completions.Max)
 	}
 
 	if ctx.Prepare() {
@@ -117,7 +121,7 @@ func (c *BlocksCompletion) Render(ctx PrintContext, preCursor int) int {
 
 	prefix := ""
 	formatted, width := formatSuggestions(
-		suggestions[completions.verticalScroll:completions.verticalScroll+windowHeight],
+		suggestions[completions.VerticalScroll:completions.VerticalScroll+windowHeight],
 		ctx.Columns()-runewidth.StringWidth(prefix)-1, // -1 means a width of scrollbar
 	)
 
@@ -146,7 +150,7 @@ func (c *BlocksCompletion) Render(ctx PrintContext, preCursor int) int {
 	contentHeight := len(suggestions)
 
 	fractionVisible := float64(windowHeight) / float64(contentHeight)
-	fractionAbove := float64(completions.verticalScroll) / float64(contentHeight)
+	fractionAbove := float64(completions.VerticalScroll) / float64(contentHeight)
 
 	scrollbarHeight := int(clamp(float64(windowHeight), 1, float64(windowHeight)*fractionVisible))
 	scrollbarTop := int(float64(windowHeight) * fractionAbove)
@@ -155,7 +159,7 @@ func (c *BlocksCompletion) Render(ctx PrintContext, preCursor int) int {
 		return scrollbarTop <= row && row <= scrollbarTop+scrollbarHeight
 	}
 
-	selected := completions.selected - completions.verticalScroll
+	selected := completions.Selected - completions.VerticalScroll
 	out := ctx.Writer()
 	out.SetColor(White, Cyan, false)
 	for i := 0; i < windowHeight; i++ {
@@ -201,7 +205,7 @@ func (c *BlocksCompletion) refreshCompletion(ctx PressContext) (exit bool) {
 	if !c.Active() || c.Completions == nil {
 		return
 	}
-	c.Completions.Update(*ctx.GetBuffer().Document())
+	c.Update(ctx.GetBuffer().Document())
 	return
 }
 
@@ -211,7 +215,7 @@ func (c *BlocksCompletion) tabCompletion(ctx PressContext) (exit bool) {
 	}
 	// check if need try update
 	if len(c.Completions.GetSuggestions()) == 0 {
-		c.Completions.Update(*ctx.GetBuffer().Document())
+		c.Update(ctx.GetBuffer().Document())
 	}
 	suggestions := c.Completions.GetSuggestions()
 	switch len(suggestions) {
@@ -219,7 +223,7 @@ func (c *BlocksCompletion) tabCompletion(ctx PressContext) (exit bool) {
 		return
 	case 1:
 		buf := ctx.GetBuffer()
-		w := buf.Document().GetWordBeforeCursorUntilSeparator(c.Completions.wordSeparator)
+		w := buf.Document().GetWordBeforeCursorUntilSeparator(c.Completions.WordSeparator)
 		if w != "" {
 			buf.DeleteBeforeCursor(len([]rune(w)))
 		}
@@ -229,7 +233,7 @@ func (c *BlocksCompletion) tabCompletion(ctx PressContext) (exit bool) {
 			buf.InsertText(suggestions[0].Text, false, true)
 		}
 
-		c.Completions.Update(*ctx.GetBuffer().Document())
+		c.Update(ctx.GetBuffer().Document())
 	default:
 		c.Completions.Next()
 	}
@@ -244,7 +248,7 @@ func (c *BlocksCompletion) EnterSelect(buf *Buffer) (ok bool) {
 	if s == nil {
 		return
 	}
-	w := buf.Document().GetWordBeforeCursorUntilSeparator(c.Completions.wordSeparator)
+	w := buf.Document().GetWordBeforeCursorUntilSeparator(c.Completions.WordSeparator)
 	if w != "" {
 		buf.DeleteBeforeCursor(len([]rune(w)))
 	}
@@ -253,8 +257,13 @@ func (c *BlocksCompletion) EnterSelect(buf *Buffer) (ok bool) {
 	} else {
 		buf.InsertText(s.Text, false, true)
 	}
-	c.Completions.Update(*buf.Document())
+
+	c.Update(buf.Document())
 	return true
+}
+
+func (c *BlocksCompletion) Update(doc *Document) {
+	c.Completions.Update(c.Cfg.Completer(*doc))
 }
 
 func clamp(high, low, x float64) float64 {

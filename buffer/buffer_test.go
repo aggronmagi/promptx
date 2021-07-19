@@ -1,4 +1,4 @@
-package promptx
+package buffer
 
 import (
 	"reflect"

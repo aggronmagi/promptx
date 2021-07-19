@@ -21,7 +21,7 @@
 // SOFTWARE.
 //
 // Copy From https://github.com/c-bata/go-prompt
-package promptx
+package output
 
 import (
 	"io"
@@ -192,10 +192,6 @@ func (w *rWriter) Flush() error {
 	}
 	w.buffer = w.buffer[:0]
 	return nil
-}
-
-func (w *rWriter) Clear() {
-	w.buffer = w.buffer[:0]
 }
 
 var _ ConsoleWriter = &rWriter{}

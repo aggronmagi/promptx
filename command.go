@@ -7,6 +7,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	completion "github.com/aggronmagi/promptx/completion"
 	"github.com/aggronmagi/promptx/internal/debug"
 	"github.com/spf13/pflag"
 )
@@ -279,7 +280,7 @@ func (c *Cmd) findSugest(line []rune, pos int, origLine string, cmds []*Cmd) (su
 	matchCmd := func(name []rune, cmd *Cmd, s *Suggest) {
 		// complete current suggest
 		if len(line) < len(name) {
-			if !fuzzyMatchRunes(name, line) {
+			if !completion.FuzzyMatchRunes(name, line) {
 				return
 			}
 			if s == nil {
@@ -374,7 +375,7 @@ func (c *Cmd) findSugest(line []rune, pos int, origLine string, cmds []*Cmd) (su
 				})
 			}
 		})
-		suggest = FilterFuzzy(suggest, string(left), true)
+		suggest = completion.FilterFuzzy(suggest, string(left), true)
 		return
 	} else if len(suggest) != 1 {
 		// find sub command completion

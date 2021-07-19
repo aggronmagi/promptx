@@ -15,6 +15,15 @@ type ConsoleBlocks interface {
 	GetBuffer() *Buffer
 }
 
+// KeyBindFunc receives context and process
+type KeyBindFunc func(ctx PressContext) (exit bool)
+
+// KeyBind represents which key should do what operation.
+type KeyBind struct {
+	Key Key
+	Fn  KeyBindFunc
+}
+
 // EmptyBlocks empty for basic operation
 type EmptyBlocks struct {
 	active  bool

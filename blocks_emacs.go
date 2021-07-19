@@ -1,6 +1,7 @@
 package promptx
 
 import (
+	buffer "github.com/aggronmagi/promptx/buffer"
 	"github.com/aggronmagi/promptx/internal/debug"
 	runewidth "github.com/mattn/go-runewidth"
 )
@@ -19,7 +20,7 @@ type BlocksEmacsBuffer struct {
 }
 
 func (c *BlocksEmacsBuffer) ResetBuffer() {
-	c.buf = NewBuffer()
+	c.buf = buffer.NewBuffer()
 	return
 }
 

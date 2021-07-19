@@ -1,4 +1,4 @@
-package promptx
+package input
 
 // WinSize represents the width and height of terminal.
 type WinSize struct {
@@ -59,6 +59,18 @@ func GetKey(b []byte) Key {
 		return Ignore
 	}
 	return NotDefined
+}
+
+// ConsoleParser is an interface to abstract input layer.
+type ConsoleParser interface {
+	// Setup should be called before starting input
+	Setup() error
+	// TearDown should be called after stopping input
+	TearDown() error
+	// GetWinSize returns WinSize object to represent width and height of terminal.
+	GetWinSize() *WinSize
+	// Read returns byte array.
+	Read() ([]byte, error)
 }
 
 // asciiSequences holds mappings of the key and byte array.

@@ -21,7 +21,7 @@
 // SOFTWARE.
 //
 // Copy From https://github.com/c-bata/go-prompt
-package promptx
+package output
 
 import (
 	"bytes"
@@ -31,6 +31,10 @@ import (
 // VT100Writer generates VT100 escape sequences.
 type VT100Writer struct {
 	buffer []byte
+}
+
+func (w *VT100Writer) Clear() {
+	w.buffer = w.buffer[:0]
 }
 
 // WriteRaw to write raw byte array

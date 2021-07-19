@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	buffer "github.com/aggronmagi/promptx/buffer"
 	"github.com/aggronmagi/promptx/internal/debug"
 )
 
@@ -106,7 +107,7 @@ func (m *CommonBlockManager) applyOptionModify() {
 		m.Completion.Cfg = NewCompleteOptions(cc.Completion...)
 		m.Completion.ApplyOptions()
 		if m.Completion.Completions != nil {
-			m.Completion.Completions.Update(*NewDocument())
+			m.Completion.Update(buffer.NewDocument())
 		}
 	} else {
 		m.Completion.ApplyOptions(cc.Completion...)
@@ -254,7 +255,7 @@ func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 			}
 		}
 		if status == CancelStatus {
-			m.Completion.Completions.Update(*NewDocument())
+			m.Completion.Update(buffer.NewDocument())
 		}
 	}
 

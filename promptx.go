@@ -6,8 +6,10 @@ import (
 	"sync"
 	"syscall"
 
+	input "github.com/aggronmagi/promptx/input"
 	"github.com/aggronmagi/promptx/internal/debug"
 	"github.com/aggronmagi/promptx/internal/std"
+	output "github.com/aggronmagi/promptx/output"
 	"go.uber.org/atomic"
 	"golang.org/x/term"
 )
@@ -86,7 +88,7 @@ func NewPromptx(opts ...PromptOption) *Promptx {
 	p.cond = sync.NewCond(&p.m)
 	p.m.Lock()
 	p.t = NewTerminal(p.cc.Stdin, p.cc.Stdout, p.cc.ChanSize)
-	p.mgr.SetWriter(NewConsoleWriter(p.t))
+	p.mgr.SetWriter(output.NewConsoleWriter(p.t))
 	p.syncCh = make(chan struct{}, 1)
 	p.refreshCh = make(chan struct{}, 1)
 	return p
@@ -133,7 +135,7 @@ func (p *Promptx) run() (err error) {
 	}()
 	if p.t == nil {
 		p.t = NewTerminal(p.cc.Stdin, p.cc.Stdout, p.cc.ChanSize)
-		p.mgr.SetWriter(NewConsoleWriter(p.t))
+		p.mgr.SetWriter(output.NewConsoleWriter(p.t))
 	}
 	// update windows size
 	w, h, err := term.GetSize(syscall.Stdout)
@@ -184,7 +186,7 @@ func (p *Promptx) run() (err error) {
 			if !ok {
 				return
 			}
-			key := GetKey(in)
+			key := input.GetKey(in)
 
 			if p.getCurrent().Event(key, in) {
 				if p.exchangeNext(true) {
