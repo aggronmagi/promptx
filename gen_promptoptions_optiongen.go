@@ -4,16 +4,13 @@
 package promptx
 
 import (
-	"io"
-
-	"github.com/aggronmagi/promptx/internal/std"
+	"github.com/aggronmagi/promptx/input"
+	"github.com/aggronmagi/promptx/output"
 )
 
 var _ = PromptOptionsOptionDeclareWithDefault()
 
 type PromptOptions struct {
-	Stdin  io.ReadCloser
-	Stdout io.Writer
 	// event chan size
 	ChanSize int
 	// default global input options
@@ -24,6 +21,11 @@ type PromptOptions struct {
 	CommonOpions []CommonOption
 	// default manager. if it is not nil, ignore CommonOpions.
 	BlocksManager BlocksManager
+	// input
+	Input input.ConsoleParser
+	// output
+	Output output.ConsoleWriter
+	Stderr output.ConsoleWriter
 }
 
 func (cc *PromptOptions) SetOption(opt PromptOption) {
@@ -41,22 +43,6 @@ func (cc *PromptOptions) GetSetOption(opt PromptOption) PromptOption {
 }
 
 type PromptOption func(cc *PromptOptions) PromptOption
-
-func WithStdin(v io.ReadCloser) PromptOption {
-	return func(cc *PromptOptions) PromptOption {
-		previous := cc.Stdin
-		cc.Stdin = v
-		return WithStdin(previous)
-	}
-}
-
-func WithStdout(v io.Writer) PromptOption {
-	return func(cc *PromptOptions) PromptOption {
-		previous := cc.Stdout
-		cc.Stdout = v
-		return WithStdout(previous)
-	}
-}
 
 func WithChanSize(v int) PromptOption {
 	return func(cc *PromptOptions) PromptOption {
@@ -98,6 +84,30 @@ func WithBlocksManager(v BlocksManager) PromptOption {
 	}
 }
 
+func WithInput(v input.ConsoleParser) PromptOption {
+	return func(cc *PromptOptions) PromptOption {
+		previous := cc.Input
+		cc.Input = v
+		return WithInput(previous)
+	}
+}
+
+func WithOutput(v output.ConsoleWriter) PromptOption {
+	return func(cc *PromptOptions) PromptOption {
+		previous := cc.Output
+		cc.Output = v
+		return WithOutput(previous)
+	}
+}
+
+func WithStderr(v output.ConsoleWriter) PromptOption {
+	return func(cc *PromptOptions) PromptOption {
+		previous := cc.Stderr
+		cc.Stderr = v
+		return WithStderr(previous)
+	}
+}
+
 func NewPromptOptions(opts ...PromptOption) *PromptOptions {
 	cc := newDefaultPromptOptions()
 	for _, opt := range opts {
@@ -120,13 +130,14 @@ func newDefaultPromptOptions() *PromptOptions {
 	cc := &PromptOptions{}
 
 	for _, opt := range [...]PromptOption{
-		WithStdin(std.Stdin),
-		WithStdout(std.Stdout),
 		WithChanSize(256),
 		WithInputOptions(nil...),
 		WithSelectOptions(nil...),
 		WithCommonOpions(nil...),
 		WithBlocksManager(nil),
+		WithInput(input.NewStandardInputParser()),
+		WithOutput(output.NewStandardOutputWriter()),
+		WithStderr(output.NewStderrWriter()),
 	} {
 		_ = opt(cc)
 	}

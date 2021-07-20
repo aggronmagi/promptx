@@ -232,16 +232,15 @@ func (m *CommonBlockManager) ApplyOption(opts ...CommonOption) {
 }
 
 // FinishCallBack  call back
-func (m *CommonBlockManager) FinishCallBack(status int, buf *Buffer) {
+func (m *CommonBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 	if status == FinishStatus {
 		if m.cc.ExecFunc != nil && buf != nil && buf.Text() != "" {
 			text := buf.Document().Text
 			ctx := m.GetContext()
-			m.ExecTask(func() {
-				m.cc.ExecFunc(ctx, text)
-			})
+			m.cc.ExecFunc(ctx, text)
 		}
 	}
+	return false
 }
 
 // PreCheckCallBack change status pre check

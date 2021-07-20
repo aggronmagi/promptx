@@ -2,7 +2,8 @@ package promptx
 
 import (
 	"io"
-	"sync"
+
+	"github.com/aggronmagi/promptx/internal/debug"
 )
 
 // InputOptionsOptionDeclareWithDefault promptx options
@@ -62,8 +63,6 @@ type InputBlockManager struct {
 	Input    *BlocksEmacsBuffer
 	Validate *BlocksNewLine
 	cc       *InputOptions
-	cond     *sync.Cond
-	m        sync.Mutex
 }
 
 // NewInputManager new input text
@@ -106,15 +105,13 @@ func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
 	m.SetCallBack(m.FinishCallBack)
 	m.SetPreCheck(m.PreCheckCallBack)
 
-	m.cond = sync.NewCond(&m.m)
-	m.m.Lock()
 	// plugin exit not exit
 	m.SetCancelKeyAutoExit(false)
 	return
 }
 
 // FinishCallBack  call back
-func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) {
+func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 
 	if status == FinishStatus {
 		// set not draw new line
@@ -125,8 +122,8 @@ func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) {
 			m.cc.FinishFunc(text, nil)
 			//})
 		}
-
-		m.cond.Signal()
+		debug.Println("recv input finish")
+		return true
 	}
 	if status == CancelStatus {
 		if m.cc.FinishFunc != nil {
@@ -134,10 +131,12 @@ func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) {
 			m.cc.FinishFunc("", io.EOF)
 			//})
 		}
+		debug.Println("recv input cancel")
 		// set not draw new line
 		m.SetChangeStatus(1)
-		m.cond.Signal()
+		return true
 	}
+	return false
 }
 
 // PreCheckCallBack change status pre check

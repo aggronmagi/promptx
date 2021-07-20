@@ -12,12 +12,6 @@ type Context interface {
 	MulSel(tip string, list []string, opts ...SelectOption) (sel []int)
 	// Stop stop run
 	Stop()
-	// ChangeMode
-	ChangeMode(next BlocksManager)
-	// RevertMode revert last mode to next
-	RevertMode()
-	// ResetDefaultMode reset default mode
-	ResetDefaultMode()
 	// EnterRawMode enter raw mode for read key press real time
 	EnterRawMode() (err error)
 	// ExitRawMode exit raw mode
@@ -44,6 +38,8 @@ type Context interface {
 	Println(v ...interface{})
 }
 
+var _ Context = &Promptx{}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // PressContext export for logic loop
@@ -57,6 +53,8 @@ type PressContext interface {
 	// GetInput get input bytes
 	GetInput() []byte
 }
+
+var _ PressContext = &pressContext{}
 
 type pressContext struct {
 	buf   *Buffer
@@ -119,6 +117,8 @@ type PrintContext interface {
 	// Status return current status. 0: normal 1: finish 2:canel
 	Status() int
 }
+
+var _ PrintContext = &consoleContext{}
 
 type consoleContext struct {
 	*BlocksBaseManager

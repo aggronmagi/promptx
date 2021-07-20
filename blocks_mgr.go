@@ -1,17 +1,20 @@
 package promptx
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/aggronmagi/promptx/internal/debug"
+	"go.uber.org/atomic"
 )
 
 type BlocksManager interface {
 	// Setup to initialize console output.
-	Setup(title string)
+	Setup(size *WinSize)
 	// TearDown to clear title and erasing.
 	TearDown()
+
+	Refresh()
+	ExitSign(code int)
 
 	// SetWriter set console writer
 	SetWriter(out ConsoleWriter)
@@ -26,7 +29,7 @@ type BlocksManager interface {
 	ChangeStatus()
 
 	// UpdateWinSize called when window size is changed.
-	UpdateWinSize(w, h int)
+	UpdateWinSize(size *WinSize)
 	// Columns return console window col count
 	Columns() int
 	// Rows return console window row count
@@ -36,12 +39,15 @@ type BlocksManager interface {
 	Event(key Key, in []byte) (exit bool)
 	// Render renders to the console.
 	Render(status int)
+	// clear blocks last render
 	Clear()
 
-	SetExecFunc(e func(exec func()))
-
+	// use for context
 	SetExecContext(ctx Context)
 	GetContext() Context
+
+	// IsInTask is running event
+	IsInTask() bool
 }
 
 var _ BlocksManager = &BlocksBaseManager{}
@@ -58,7 +64,7 @@ type BlocksBaseManager struct {
 	cancelKey Key
 	finishKey Key
 	preCheck  func(status int, doc *Buffer) bool
-	callback  func(status int, doc *Buffer)
+	callback  func(status int, doc *Buffer) bool
 	// cancel key touch auto exit
 	cancelNotExit bool
 
@@ -80,6 +86,8 @@ type BlocksBaseManager struct {
 	// major is input buffer
 	major ConsoleBlocks
 
+	inTask atomic.Bool
+
 	// run context
 	ctx Context
 }
@@ -90,10 +98,6 @@ func (m *BlocksBaseManager) SetExecContext(ctx Context) {
 
 func (m *BlocksBaseManager) GetContext() Context {
 	return m.ctx
-}
-
-func (m *BlocksBaseManager) SetExecFunc(e func(exec func())) {
-	m.execFunc = e
 }
 
 // SetChangeStatus modify change status
@@ -120,25 +124,18 @@ func (m *BlocksBaseManager) SetPreCheck(f func(status int, doc *Buffer) bool) {
 }
 
 // SetCallBack set call back notify
-func (m *BlocksBaseManager) SetCallBack(f func(status int, doc *Buffer)) {
+func (m *BlocksBaseManager) SetCallBack(f func(status int, doc *Buffer) bool) {
 	m.callback = f
 }
 
-// ExecTask execute task in queue
-func (m *BlocksBaseManager) ExecTask(task func()) {
-	if m.execFunc != nil {
-		m.execFunc(task)
-	} else {
-		task()
-	}
-}
-
 // Setup to initialize console output.
-func (m *BlocksBaseManager) Setup(title string) {
-	if title != "" {
-		m.out.SetTitle(title)
-		debug.AssertNoError(m.out.Flush())
-	}
+func (m *BlocksBaseManager) Setup(size *WinSize) {
+	// if title != "" {
+	// 	m.out.SetTitle(title)
+	// 	debug.AssertNoError(m.out.Flush())
+	// }
+	m.UpdateWinSize(size)
+	m.Render(NormalStatus)
 }
 
 // SetCancelKeyAutoExit set exit if press cancel key and input buffer is ""
@@ -148,9 +145,13 @@ func (m *BlocksBaseManager) SetCancelKeyAutoExit(exit bool) {
 
 // TearDown to clear title and erasing.
 func (m *BlocksBaseManager) TearDown() {
-	m.out.ClearTitle()
-	m.out.EraseDown()
-	debug.AssertNoError(m.out.Flush())
+	// m.out.ClearTitle()
+	// m.out.EraseDown()
+	// debug.AssertNoError(m.out.Flush())
+}
+
+func (m *BlocksBaseManager) ExitSign(code int) {
+	m.Render(CancelStatus)
 }
 
 func (m *BlocksBaseManager) SetWriter(out ConsoleWriter) {
@@ -181,8 +182,18 @@ func (m *BlocksBaseManager) AddMirrorMode(mode ...ConsoleBlocks) {
 	}
 }
 
+func (m *BlocksBaseManager) Refresh() {
+	m.Render(NormalStatus)
+}
+
+func (m *BlocksBaseManager) IsInTask() bool {
+	return m.inTask.Load()
+}
+
 // Event deal console key press
 func (m *BlocksBaseManager) Event(key Key, in []byte) (exit bool) {
+	m.inTask.Store(true)
+	defer m.inTask.Store(false)
 	var ctx pressContext
 	ctx.key = key
 	ctx.input = in
@@ -220,8 +231,9 @@ func (m *BlocksBaseManager) Event(key Key, in []byte) (exit bool) {
 
 		m.Render(CancelStatus)
 
-		if m.callback != nil {
-			m.callback(CancelStatus, ctx.buf)
+		if m.callback != nil && m.callback(CancelStatus, ctx.buf) {
+			exit = true
+			return
 		}
 		if !m.cancelNotExit {
 			if m.major != nil && m.major.GetBuffer() != nil &&
@@ -242,8 +254,9 @@ func (m *BlocksBaseManager) Event(key Key, in []byte) (exit bool) {
 		}
 
 		m.Render(FinishStatus)
-		if m.callback != nil {
-			m.callback(FinishStatus, ctx.buf)
+		if m.callback != nil && m.callback(FinishStatus, ctx.buf) {
+			exit = true
+			return
 		}
 		if m.major != nil {
 			m.major.ResetBuffer()
@@ -254,15 +267,16 @@ func (m *BlocksBaseManager) Event(key Key, in []byte) (exit bool) {
 			m.Render(NormalStatus)
 			return
 		}
-		if m.callback != nil {
-			m.callback(NormalStatus, ctx.buf)
+		if m.callback != nil && m.callback(NormalStatus, ctx.buf) {
+			exit = true
+			return
 		}
 	}
 
-	// will change next mode
-	if m.changeStatus == 1 {
-		return
-	}
+	// // will change next mode
+	// if m.changeStatus == 1 {
+	// 	return
+	// }
 
 	// normal draw
 	m.Render(NormalStatus)
@@ -281,9 +295,9 @@ func (m *BlocksBaseManager) OnEventBehind(ctx PressContext, key Key, in []byte) 
 }
 
 // UpdateWinSize called when window size is changed.
-func (m *BlocksBaseManager) UpdateWinSize(w, h int) {
-	m.row = h
-	m.col = w
+func (m *BlocksBaseManager) UpdateWinSize(size *WinSize) {
+	m.row = size.Row
+	m.col = size.Col
 }
 
 // ChangeStatus change status notify. revert internal status
@@ -363,7 +377,7 @@ func (m *BlocksBaseManager) Render(status int) {
 			// calc real cursor pos
 			ctx.cursor = lastCursor + ctx.buf.Document().DisplayCursorPosition()
 		}
-		debug.Log(fmt.Sprintf("last:%d new:%d buf:%t cursor:%d", lastCursor, newCursor, ctx.buf != nil, ctx.cursor))
+		//		debug.Log(fmt.Sprintf("last:%d new:%d buf:%t cursor:%d", lastCursor, newCursor, ctx.buf != nil, ctx.cursor))
 
 		lastCursor = newCursor
 	}

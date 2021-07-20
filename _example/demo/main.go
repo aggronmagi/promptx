@@ -12,7 +12,6 @@ import (
 
 	"github.com/aggronmagi/promptx"
 	"github.com/aggronmagi/promptx/internal/debug"
-	"github.com/aggronmagi/promptx/internal/std"
 	"github.com/spf13/pflag"
 )
 
@@ -190,7 +189,7 @@ var cmds = []*promptx.Cmd{
 			})
 			// NOTE: refresh
 			c.Println("xxx")
-			c.Println("xxx")
+			c.Println("xxx wait 5 second")
 			time.Sleep(time.Second * 5)
 			c.Println("fiish")
 		},
@@ -210,10 +209,25 @@ var cmds = []*promptx.Cmd{
 		Func: func(c *promptx.CommandContext) {
 			c.ExitRawMode()
 			cmd := exec.Command("ls", "-alh")
-			cmd.Stdin = std.Stdin   // os.Stdin
-			cmd.Stdout = std.Stdout // os.Stdout
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			cmd.Run()
+			c.EnterRawMode()
+		},
+	},
+	&promptx.Cmd{
+		Name: "bash",
+		Help: "enter linux bash",
+		Func: func(c *promptx.CommandContext) {
+			err := c.ExitRawMode()
+			c.Println("exit rawmode:", err)
+			cmd := exec.Command("bash")
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err = cmd.Run()
+			c.Println("run result:", err)
 			c.EnterRawMode()
 		},
 	},
@@ -294,6 +308,7 @@ var cmds = []*promptx.Cmd{
 				sec = 5
 			}
 			log.Println(c.Args)
+			log.Println("wait for ", time.Duration(sec)*time.Second)
 			time.Sleep(time.Second * time.Duration(sec))
 			log.Println("finish")
 			return

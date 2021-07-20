@@ -9,7 +9,7 @@ import (
 
 const (
 	envEnableLog = "GO_PROMPT_ENABLE_LOG"
-	logFileName  = "go-prompt.log"
+	logFileName  = "go-promptx.log"
 )
 
 var (

@@ -3,7 +3,6 @@ package promptx
 import (
 	"strconv"
 	"strings"
-	"sync"
 )
 
 // InputOptionsOptionDeclareWithDefault promptx options
@@ -105,8 +104,6 @@ type SelectBlockManager struct {
 	Select   *BlocksSelect
 	Validate *BlocksNewLine
 	cc       *SelectOptions
-	cond     *sync.Cond
-	m        sync.Mutex
 }
 
 // NewSelectManager new input text
@@ -160,15 +157,13 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 	m.SetCallBack(m.FinishCallBack)
 	m.SetPreCheck(m.PreCheckCallBack)
 
-	m.cond = sync.NewCond(&m.m)
-	m.m.Lock()
 	// plugin exit not exit
 	m.SetCancelKeyAutoExit(false)
 	return
 }
 
 // FinishCallBack  call back
-func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) {
+func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 	if status == FinishStatus {
 		// set not draw new line
 		m.SetChangeStatus(1)
@@ -178,7 +173,7 @@ func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) {
 			m.cc.FinishFunc(m.Select.GetSelects())
 			//})
 		}
-		m.cond.Signal()
+		return true
 	}
 	if status == CancelStatus {
 		// set not draw new line
@@ -190,8 +185,9 @@ func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) {
 			//})
 		}
 
-		m.cond.Signal()
+		return true
 	}
+	return false
 }
 
 // PreCheckCallBack change status pre check

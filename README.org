@@ -7,15 +7,10 @@ Library for creating interactive cli applications with powerful interactive prom
 1. history
 
 ** Copy File List
-| dir-or-files                   | source-repo | modify       |
-|--------------------------------+-------------+--------------|
-| internal/std/                  | [[https://github.com/chzyer/readline][readline]]    |              |
-| terminal.go                    | [[https://github.com/chzyer/readline][readline]]    | raw mode use |
-| internal/ debug,strings,bisect | [[https://github.com/c-bata/go-prompt/][go-prompt]]   |              |
-| output/                        | [[https://github.com/c-bata/go-prompt/][go-prompt]]   | new func     |
-| input.go,key.go                | [[https://github.com/c-bata/go-prompt/][go-prompt]]   | add key map  |
-| buffer.go,document.go          | [[https://github.com/c-bata/go-prompt/][go-prompt]]   |              |
-| completion.go,filter.go        | [[https://github.com/c-bata/go-prompt/][go-prompt]]   |              |
+| dir-or-files                            | source-repo | modify |
+|-----------------------------------------+-------------+--------|
+| internal/ debug,strings,bisect          | [[https://github.com/c-bata/go-prompt/][go-prompt]]   |        |
+| output/input/terminal/completion/buffer | [[https://github.com/c-bata/go-prompt/][go-prompt]]   |        |
 
 
 ** Short Key
