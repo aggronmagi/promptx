@@ -51,7 +51,6 @@ type TerminalApp struct {
 func NewTerminalApp(in input.ConsoleParser) *TerminalApp {
 	return &TerminalApp{
 		in:        in,
-		quit:      make(chan struct{}),
 		sizeCh:    make(chan *input.WinSize),
 		signCh:    make(chan int),
 		closeSign: make(chan struct{}, 1),
@@ -64,6 +63,7 @@ func (t *TerminalApp) Run(app App) {
 	debug.Println("running: ", fmt.Sprintf("%T", interface{}(app)))
 	// start running
 	if t.running.CAS(false, true) {
+		t.quit = make(chan struct{})
 		debug.Println("enter running", os.Getpid())
 		t.EnterRaw()
 		defer func() {

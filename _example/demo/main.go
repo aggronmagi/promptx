@@ -328,5 +328,12 @@ func main() {
 	// set log writer
 	log.SetOutput(p.Stdout())
 
+	p.Input("input xx:")
+	p.Select("select xx:", []string{
+		"x1",
+		"x2",
+		"x3",
+	})
+
 	p.Run()
 }
