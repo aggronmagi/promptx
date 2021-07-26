@@ -56,7 +56,7 @@ func (h *History) Rebuild(buf string) {
 	}
 	// if not match any one histories,put all histories to tmp.
 	if len(h.tmp) < 1 {
-		for _,v := range h.histories {
+		for _, v := range h.histories {
 			h.tmp = append(h.tmp, v)
 		}
 	}

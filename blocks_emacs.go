@@ -105,6 +105,9 @@ var emacsKeyBindings = []KeyBind{
 		Fn: func(ctx PressContext) bool {
 			if ctx.GetBuffer().Text() != "" {
 				ctx.GetBuffer().Delete(1)
+			}else {
+				// use control-d exit 
+				return true 
 			}
 			return false
 		},

@@ -99,6 +99,7 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 	}, ControlN, Down)
 
 	m.SetBeforeEvent(m.BeforeEvent)
+	m.SetCancelKeyAutoExit(false)
 
 	m.applyOptionModify()
 	return
