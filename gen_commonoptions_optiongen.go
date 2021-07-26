@@ -25,6 +25,8 @@ type CommonOptions struct {
 	Commands []*Cmd
 	// alway check input command
 	AlwaysCheckCommand bool
+	// history file
+	History string
 }
 
 func (cc *CommonOptions) SetOption(opt CommonOption) {
@@ -163,6 +165,14 @@ func WithCommonOptionAlwaysCheckCommand(v bool) CommonOption {
 	}
 }
 
+func WithCommonOptionHistory(v string) CommonOption {
+	return func(cc *CommonOptions) CommonOption {
+		previous := cc.History
+		cc.History = v
+		return WithCommonOptionHistory(previous)
+	}
+}
+
 func NewCommonOptions(opts ...CommonOption) *CommonOptions {
 	cc := newDefaultCommonOptions()
 	for _, opt := range opts {
@@ -200,6 +210,7 @@ func newDefaultCommonOptions() *CommonOptions {
 		WithCommonOptionCompletion(nil...),
 		WithCommonOptionCommands(nil...),
 		WithCommonOptionAlwaysCheckCommand(false),
+		WithCommonOptionHistory(""),
 	} {
 		_ = opt(cc)
 	}

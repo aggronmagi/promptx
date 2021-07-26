@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	buffer "github.com/aggronmagi/promptx/buffer"
+	"github.com/aggronmagi/promptx/history"
 	"github.com/aggronmagi/promptx/internal/debug"
 )
 
@@ -32,6 +33,8 @@ func CommonOptionsOptionDeclareWithDefault() interface{} {
 		"Commands": []*Cmd(nil),
 		// alway check input command
 		"AlwaysCheckCommand": bool(false),
+		// history file
+		"History": string(""),
 	}
 }
 
@@ -45,6 +48,8 @@ type CommonBlockManager struct {
 	Completion *BlocksCompletion
 	cc         *CommonOptions
 	root       *Cmd
+	history    *history.History
+	hf         string
 }
 
 // NewDefaultBlockManger default blocks manager.
@@ -59,7 +64,9 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 		Validate:          &BlocksNewLine{},
 		Completion:        &BlocksCompletion{},
 		cc:                cc,
+		history:           history.NewHistory(),
 	}
+
 	m.AddMirrorMode(m.Tip)
 	m.AddMirrorMode(m.PreWords)
 	m.AddMirrorMode(m.Input)
@@ -72,6 +79,26 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 	m.Tip.SetIsDraw(func(status int) (draw bool) {
 		return status == NormalStatus
 	})
+	m.Input.BindKey(func(ctx PressContext) (exit bool) {
+		buf := ctx.GetBuffer()
+		if new, ok := m.history.Older(buf.Text()); ok {
+			buf.Reset()
+			buf.InsertText(new, false, true)
+			m.Completion.Update(ctx.GetBuffer().Document())
+		}
+		return false
+	}, ControlP, Up)
+	m.Input.BindKey(func(ctx PressContext) (exit bool) {
+		buf := ctx.GetBuffer()
+		if new, ok := m.history.Newer(buf.Text()); ok {
+			buf.Reset()
+			buf.InsertText(new, false, true)
+			m.Completion.Update(ctx.GetBuffer().Document())
+		}
+		return false
+	}, ControlN, Down)
+
+	m.SetBeforeEvent(m.BeforeEvent)
 
 	m.applyOptionModify()
 	return
@@ -79,6 +106,16 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 
 func (m *CommonBlockManager) applyOptionModify() {
 	cc := m.cc
+
+	if m.hf != cc.History {
+		if len(m.hf) == 0 {
+			m.history.Load(cc.History)
+		} else {
+			m.history.Save(m.hf)
+			m.history.Reset()
+		}
+		m.hf = cc.History
+	}
 
 	if len(cc.TipText) > 0 {
 		m.Tip.Words = append(m.Tip.Words, &Word{
@@ -231,12 +268,22 @@ func (m *CommonBlockManager) ApplyOption(opts ...CommonOption) {
 	m.applyOptionModify()
 }
 
+func (m *CommonBlockManager) BeforeEvent(ctx PressContext, key Key, in []byte) (exit bool) {
+	// first deal input char event
+	if key == NotDefined && ctx.GetBuffer() != nil {
+		ctx.GetBuffer().InsertText(string(in), false, true)
+		m.history.Rebuild(ctx.GetBuffer().Text())
+	}
+	return
+}
+
 // FinishCallBack  call back
 func (m *CommonBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 	if status == FinishStatus {
 		if m.cc.ExecFunc != nil && buf != nil && buf.Text() != "" {
 			text := buf.Document().Text
 			ctx := m.GetContext()
+			m.history.Add(buf.Text())
 			m.cc.ExecFunc(ctx, text)
 		}
 	}
@@ -281,4 +328,12 @@ func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 	}
 
 	return
+}
+
+// TearDown to clear title and erasing.
+func (m *CommonBlockManager) TearDown() {
+	m.BlocksBaseManager.TearDown()
+	if len(m.hf) > 0 {
+		m.history.Save(m.hf)
+	}
 }

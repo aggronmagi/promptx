@@ -52,14 +52,16 @@ type BlocksManager interface {
 
 var _ BlocksManager = &BlocksBaseManager{}
 
+type EventCall func(ctx PressContext, key Key, in []byte) (exit bool)
+
 // BlocksBaseManager manage some blocks to merge self view
 type BlocksBaseManager struct {
 	// console writer
 	out ConsoleWriter
 
 	//
-	eventBefore func(ctx PressContext, key Key, in []byte) (exit bool)
-	eventBehind func(ctx PressContext, key Key, in []byte) (exit bool)
+	eventBefore EventCall
+	eventBehind EventCall
 	// action config
 	cancelKey Key
 	finishKey Key
@@ -90,6 +92,14 @@ type BlocksBaseManager struct {
 
 	// run context
 	ctx Context
+}
+
+func (m *BlocksBaseManager) SetBeforeEvent(f EventCall) {
+	m.eventBefore = f
+}
+
+func (m *BlocksBaseManager) SetBehindEvent(f EventCall) {
+	m.eventBehind = f
 }
 
 func (m *BlocksBaseManager) SetExecContext(ctx Context) {
@@ -199,10 +209,6 @@ func (m *BlocksBaseManager) Event(key Key, in []byte) (exit bool) {
 	ctx.input = in
 	if m.major != nil {
 		ctx.buf = m.major.GetBuffer()
-		// first deal input char event
-		if key == NotDefined && ctx.buf != nil {
-			ctx.buf.InsertText(string(in), false, true)
-		}
 	}
 	// debug.Println("block mgr. event: buf:", ctx.buf != nil, "major:", m.major != nil)
 	ctx.out = m.out

@@ -11,8 +11,6 @@ import (
 var _ = PromptOptionsOptionDeclareWithDefault()
 
 type PromptOptions struct {
-	// event chan size
-	ChanSize int
 	// default global input options
 	InputOptions []InputOption
 	// default global select options
@@ -43,14 +41,6 @@ func (cc *PromptOptions) GetSetOption(opt PromptOption) PromptOption {
 }
 
 type PromptOption func(cc *PromptOptions) PromptOption
-
-func WithChanSize(v int) PromptOption {
-	return func(cc *PromptOptions) PromptOption {
-		previous := cc.ChanSize
-		cc.ChanSize = v
-		return WithChanSize(previous)
-	}
-}
 
 func WithInputOptions(v ...InputOption) PromptOption {
 	return func(cc *PromptOptions) PromptOption {
@@ -130,7 +120,6 @@ func newDefaultPromptOptions() *PromptOptions {
 	cc := &PromptOptions{}
 
 	for _, opt := range [...]PromptOption{
-		WithChanSize(256),
 		WithInputOptions(nil...),
 		WithSelectOptions(nil...),
 		WithCommonOpions(nil...),

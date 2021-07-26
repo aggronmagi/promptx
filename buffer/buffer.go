@@ -178,6 +178,14 @@ func (b *Buffer) SwapCharactersBeforeCursor() {
 	}
 }
 
+func (b *Buffer) Reset() {
+	b.workingIndex = 0
+	b.workingLines = []string{""}
+	b.preferredColumn = -1
+	b.cacheDocument = nil
+	b.cursorPosition = 0 
+}
+
 // NewBuffer is constructor of Buffer struct.
 func NewBuffer() (b *Buffer) {
 	b = &Buffer{
