@@ -109,9 +109,9 @@ func (m *CommonBlockManager) applyOptionModify() {
 
 	if m.hf != cc.History {
 		if len(m.hf) == 0 {
-			m.history.Load(cc.History)
+			 debug.AssertNoError(m.history.Load(cc.History))
 		} else {
-			m.history.Save(m.hf)
+			debug.AssertNoError(m.history.Save(m.hf))
 			m.history.Reset()
 		}
 		m.hf = cc.History
@@ -334,6 +334,6 @@ func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 func (m *CommonBlockManager) TearDown() {
 	m.BlocksBaseManager.TearDown()
 	if len(m.hf) > 0 {
-		m.history.Save(m.hf)
+		debug.AssertNoError(m.history.Save(m.hf))
 	}
 }

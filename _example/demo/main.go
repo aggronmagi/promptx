@@ -323,6 +323,7 @@ func main() {
 			// install commands
 			promptx.WithCommonOptionCommands(cmds...),
 			// promptx.WithCommonOptionTipText("tip tip tip"),
+			promptx.WithCommonOptionHistory(".history"),
 		),
 	)
 	// set log writer
