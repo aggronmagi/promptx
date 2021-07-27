@@ -124,3 +124,8 @@ func (m *EmptyBlocks) BindASCII(bind KeyBindFunc, ins ...byte) {
 		m.keyBind[Key(in)+NotDefined+1] = bind
 	}
 }
+
+func (m *EmptyBlocks) IsBind(key Key) bool {
+	_,ok := m.keyBind[key]
+	return ok 
+}

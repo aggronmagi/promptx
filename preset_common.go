@@ -79,7 +79,7 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 	m.Tip.SetIsDraw(func(status int) (draw bool) {
 		return status == NormalStatus
 	})
-	m.Input.BindKey(func(ctx PressContext) (exit bool) {
+	m.Completion.BindKey(func(ctx PressContext) (exit bool) {
 		buf := ctx.GetBuffer()
 		if new, ok := m.history.Older(buf.Text()); ok {
 			buf.Reset()
@@ -88,7 +88,7 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 		}
 		return false
 	}, ControlP, Up)
-	m.Input.BindKey(func(ctx PressContext) (exit bool) {
+	m.Completion.BindKey(func(ctx PressContext) (exit bool) {
 		buf := ctx.GetBuffer()
 		if new, ok := m.history.Newer(buf.Text()); ok {
 			buf.Reset()
@@ -99,6 +99,7 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 	}, ControlN, Down)
 
 	m.SetBeforeEvent(m.BeforeEvent)
+	m.SetBehindEvent(m.BehindEvent)
 	m.SetCancelKeyAutoExit(false)
 
 	m.applyOptionModify()
@@ -273,6 +274,16 @@ func (m *CommonBlockManager) BeforeEvent(ctx PressContext, key Key, in []byte) (
 	// first deal input char event
 	if key == NotDefined && ctx.GetBuffer() != nil {
 		ctx.GetBuffer().InsertText(string(in), false, true)
+		m.history.Rebuild(ctx.GetBuffer().Text())
+	}
+	
+	return
+}
+
+
+func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (exit bool) {
+
+	if ctx.GetBuffer() != nil && m.Input.IsBind(key) {
 		m.history.Rebuild(ctx.GetBuffer().Text())
 	}
 	return
