@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"io/ioutil"
 	"strings"
+
+	"github.com/aggronmagi/promptx/internal/debug"
 )
 
 // History stores the texts that are entered.
@@ -28,13 +30,14 @@ func (h *History) Add(input string) {
 	if h.cache[input] == 1 {
 		h.histories = append(h.histories, input)
 	}
-	h.Rebuild("")
+	h.Rebuild("", true)
 }
 
-func (h *History) Rebuild(buf string) {
+func (h *History) Rebuild(buf string, force bool) {
 	buf = strings.TrimSpace(buf)
+	debug.Println("rebuild-buf", buf)
 	// add all history
-	if len(buf) == 0 && len(h.tmp) != len(h.histories)+1 {
+	if force || (len(buf) == 0 && len(h.tmp) != len(h.histories)+1) {
 		h.tmp = make([]string, len(h.histories)+1)
 		for i := range h.histories {
 			h.tmp[i] = h.histories[i]
@@ -63,6 +66,7 @@ func (h *History) Rebuild(buf string) {
 	h.tmp = append(h.tmp, "")
 	h.selected = len(h.tmp) - 1
 	h.buf = buf
+	debug.Println("rebuild-update", h.buf, h.tmp)
 }
 
 // Older saves a buffer of current line and get a buffer of previous line by up-arrow.
@@ -117,13 +121,13 @@ func (h *History) Load(file string) (err error) {
 		h.histories = append(h.histories, v)
 		h.cache[v] = len(list) - k
 	}
-	h.Rebuild("")
+	h.Rebuild("", true)
 	return
 }
 
 func (h *History) Reset() {
 	h.histories = make([]string, 0, 128)
-	h.Rebuild("")
+	h.Rebuild("", true)
 }
 
 // NewHistory returns new history object.

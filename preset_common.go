@@ -111,7 +111,7 @@ func (m *CommonBlockManager) applyOptionModify() {
 
 	if m.hf != cc.History {
 		if len(m.hf) == 0 {
-			 debug.AssertNoError(m.history.Load(cc.History))
+			debug.AssertNoError(m.history.Load(cc.History))
 		} else {
 			debug.AssertNoError(m.history.Save(m.hf))
 			m.history.Reset()
@@ -274,17 +274,21 @@ func (m *CommonBlockManager) BeforeEvent(ctx PressContext, key Key, in []byte) (
 	// first deal input char event
 	if key == NotDefined && ctx.GetBuffer() != nil {
 		ctx.GetBuffer().InsertText(string(in), false, true)
-		m.history.Rebuild(ctx.GetBuffer().Text())
 	}
-	
+
 	return
 }
 
-
 func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (exit bool) {
 
-	if ctx.GetBuffer() != nil && m.Input.IsBind(key) {
-		m.history.Rebuild(ctx.GetBuffer().Text())
+	if ctx.GetBuffer() != nil {
+		if m.Input.IsBind(key) || key == NotDefined{
+			m.history.Rebuild(ctx.GetBuffer().Text(), false)
+		}
+		if key == m.cc.CancelKey ||
+			key == m.cc.FinishKey {
+			m.history.Rebuild("", true)
+		}
 	}
 	return
 }

@@ -8,7 +8,7 @@ import (
 func TestHistoryRebuild(t *testing.T) {
 	h := NewHistory()
 	h.Add("foo")
-	h.Rebuild("")
+	h.Rebuild("", false)
 	expected := &History{
 		histories: []string{"foo"},
 		cache: map[string]int{
@@ -23,7 +23,7 @@ func TestHistoryRebuild(t *testing.T) {
 	}
 
 	h.Add("fob")
-	h.Rebuild("f")
+	h.Rebuild("f", false)
 	expected = &History{
 		histories: []string{"foo", "fob"},
 		cache: map[string]int{
@@ -38,7 +38,7 @@ func TestHistoryRebuild(t *testing.T) {
 		t.Errorf("Should be %#v, but got %#v", expected, h)
 	}
 
-	h.Rebuild("foo")
+	h.Rebuild("foo", false)
 	expected = &History{
 		histories: []string{"foo", "fob"},
 		cache: map[string]int{
@@ -68,7 +68,7 @@ func TestHistoryRebuild(t *testing.T) {
 	if !reflect.DeepEqual(expected, h) {
 		t.Errorf("Should be %#v, but got %#v", expected, h)
 	}
-	h.Rebuild("")
+	h.Rebuild("", false)
 	if !reflect.DeepEqual(expected, h) {
 		t.Errorf("Should be %#v, but got %#v", expected, h)
 	}
