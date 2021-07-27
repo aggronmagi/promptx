@@ -3,8 +3,8 @@
 * promptx
 Library for creating interactive cli applications with powerful interactive prompts.
 
-** wait
-1. history
+** Example
+[[./_example/demo/main.go][main.go]]
 
 ** Copy File List
 | dir-or-files                            | source-repo | modify |
