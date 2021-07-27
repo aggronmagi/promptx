@@ -41,7 +41,88 @@ func (w *Word) Render(ctx PrintContext, preCursor int) (nextCursor int) {
 	if len(list[len(list)-1]) == 0 {
 		out.CursorBackward(ctx.Columns())
 	}
+
 	return
+}
+
+
+// WordDefault color text
+func WordDefault(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: DefaultColor,
+	}
+}
+// WordBlue color text
+func WordBlue(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: Blue,
+	}
+}
+
+// WordBrown color text
+func WordBrown(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: Brown,
+	}
+}
+
+// WordCyan color text
+func WordCyan(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: Cyan,
+	}
+}
+
+// WordGreen color text
+func WordGreen(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: Green,
+	}
+}
+
+// WordPurple color text
+func WordPurple(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: Purple,
+	}
+}
+
+// WordRed color text
+func WordRed(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: Red,
+	}
+}
+
+// WordTurquoise color text
+func WordTurquoise(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: Turquoise,
+	}
+}
+
+// WordWhite color text
+func WordWhite(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: White,
+	}
+}
+
+// WordYellow color text
+func WordYellow(str string) *Word {
+	return &Word{
+		Text:      str,
+		TextColor: Yellow,
+	}
 }
 
 // preset word for display select,input prefix word.

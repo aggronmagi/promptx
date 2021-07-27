@@ -159,6 +159,27 @@ func (p *Promptx) Println(v ...interface{}) {
 	fmt.Fprintln(p.Stdout(), v...)
 }
 
+// WPrint  print words
+func (p *Promptx) WPrint(words ...*Word) {
+	out := p.cc.Output
+	for _, v := range words {
+		out.SetColor(v.TextColor, v.BGColor, v.Bold)
+		out.WriteStr(v.Text)
+	}
+	out.SetColor(DefaultColor, DefaultColor, false)
+}
+
+// WPrintln print words and newline
+func (p *Promptx) WPrintln(words ...*Word) {
+	out := p.cc.Output
+	for _, v := range words {
+		out.SetColor(v.TextColor, v.BGColor, v.Bold)
+		out.WriteStr(v.Text)
+	}
+	out.SetColor(DefaultColor, DefaultColor, false)
+	out.WriteRawStr("\n")
+}
+
 // Input get input
 func (p *Promptx) Input(tip string, opts ...InputOption) (result string, err error) {
 	// copy a new config

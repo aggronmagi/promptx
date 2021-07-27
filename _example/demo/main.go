@@ -111,6 +111,16 @@ var cmds = []*promptx.Cmd{
 			)
 
 			fmt.Println("登陆成功")
+			c.WPrint(&promptx.AskWord, promptx.WordRed(" Red "),
+				promptx.WordCyan(" Cyan "),
+				promptx.WordBlue(" Blue "),
+				promptx.WordGreen(" Green "),
+				promptx.WordPurple(" Purple "),
+				promptx.WordTurquoise(" Turquoise "),
+				promptx.WordWhite(" White "),
+				promptx.WordYellow(" Yellow "),
+				&promptx.NewLineWord,
+			)
 			return
 		},
 	},

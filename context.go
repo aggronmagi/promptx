@@ -36,6 +36,11 @@ type Context interface {
 	Printf(fmt string, v ...interface{})
 	// Println = fmt.Println
 	Println(v ...interface{})
+
+	// WPrint  print words
+	WPrint(words ...*Word)
+	// WPrintln print words and newline
+	WPrintln(words ...*Word)
 }
 
 var _ Context = &Promptx{}
