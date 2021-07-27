@@ -28,8 +28,8 @@ type BlocksSelect struct {
 func (c *BlocksSelect) InitBlocks() {
 	c.SetActive(true)
 
-	c.BindKey(c.Previous, Up, Left, ControlP)
-	c.BindKey(c.Next, Down, Right, ControlN)
+	c.BindKey(c.Previous, Up, Left, ControlP, BackTab)
+	c.BindKey(c.Next, Down, Right, ControlN, Tab)
 	c.BindASCII(c.Next, 'j', 'J', 'l', 'L')
 	c.BindASCII(c.Previous, 'k', 'K', 'h', 'H')
 	if c.cc.Multi {
