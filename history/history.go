@@ -109,8 +109,11 @@ func (h *History) Load(file string) (err error) {
 		return
 	}
 	list := strings.Split(string(data), "\n")
-	h.histories = make([]string, len(list))
+	h.histories = make([]string, 0, len(list))
 	for k, v := range list {
+		if len(v) < 1 {
+			continue
+		}
 		h.histories = append(h.histories, v)
 		h.cache[v] = len(list) - k
 	}
