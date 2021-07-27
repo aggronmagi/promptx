@@ -102,6 +102,8 @@ func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
 	m.AddMirrorMode(m.Input)
 	m.AddMirrorMode(m.Validate)
 
+	m.SetBeforeEvent(m.BeforeEvent)
+
 	m.SetCallBack(m.FinishCallBack)
 	m.SetPreCheck(m.PreCheckCallBack)
 
@@ -167,5 +169,13 @@ func (m *InputBlockManager) PreCheckCallBack(status int, buf *Buffer) (success b
 		m.PreWords.Words = m.cc.ResultText(m.cc, status, buf.Document())
 	}
 
+	return
+}
+
+func (m *InputBlockManager) BeforeEvent(ctx PressContext, key Key, in []byte) (exit bool) {
+	// first deal input char event
+	if key == NotDefined && ctx.GetBuffer() != nil {
+		ctx.GetBuffer().InsertText(string(in), false, true)
+	}
 	return
 }
