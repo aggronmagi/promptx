@@ -285,7 +285,9 @@ func (m *BlocksBaseManager) Event(key Key, in []byte) (exit bool) {
 	// }
 
 	// normal draw
-	m.Render(NormalStatus)
+	if !exit {
+		m.Render(NormalStatus)
+	}
 
 	return
 }
