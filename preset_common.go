@@ -282,12 +282,16 @@ func (m *CommonBlockManager) BeforeEvent(ctx PressContext, key Key, in []byte) (
 func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (exit bool) {
 
 	if ctx.GetBuffer() != nil {
-		if m.Input.IsBind(key) || key == NotDefined{
+		if m.Input.IsBind(key) || key == NotDefined {
 			m.history.Rebuild(ctx.GetBuffer().Text(), false)
 		}
 		if key == m.cc.CancelKey ||
 			key == m.cc.FinishKey {
 			m.history.Rebuild("", true)
+		}
+		// when exit,reset completion.
+		if key == ControlD && len(ctx.GetBuffer().Text()) == 0 {
+			m.Completion.Completions.Reset()
 		}
 	}
 	return
@@ -352,4 +356,6 @@ func (m *CommonBlockManager) TearDown() {
 	if len(m.hf) > 0 {
 		debug.AssertNoError(m.history.Save(m.hf))
 	}
+	// Fix linux new line
+	fmt.Println()
 }
