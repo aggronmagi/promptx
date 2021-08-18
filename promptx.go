@@ -47,8 +47,32 @@ type Promptx struct {
 // NewPromptx new prompt
 func NewPromptx(opts ...PromptOption) *Promptx {
 	cc := NewPromptOptions(opts...)
-	p := new(Promptx)
+	return newPromptx(cc)
+}
 
+// NewCommandPromptx new with command
+func NewCommandPromptx(cmds ...*Cmd) *Promptx {
+	return NewPromptx(
+		WithCommonOpions(
+			WithCommonOptionCommands(cmds...),
+		),
+	)
+}
+
+// NewOptionCommandPromptx new with command and options
+// use for replace NewCommandPromptx when you need apply other options.
+// example: NewCommandPromptx(cmds...) => NewOptionCommandPromptx(NewPromptOptions(....),cmds...)
+func NewOptionCommandPromptx(cc *PromptOptions, cmds ...*Cmd) *Promptx {
+	if cc == nil {
+		cc = NewPromptOptions()
+	}
+	cc.CommonOpions = append(cc.CommonOpions, WithCommonOptionCommands(cmds...))
+	return newPromptx(cc)
+}
+
+// newPromptx new prompt
+func newPromptx(cc *PromptOptions) *Promptx {
+	p := new(Promptx)
 	p.selectCC = NewSelectOptions(cc.SelectOptions...)
 	p.inputCC = NewInputOptions(cc.InputOptions...)
 	if cc.BlocksManager == nil {
