@@ -81,6 +81,12 @@ func (c *BlocksCompletion) InitBlocks() {
 	for _, v := range commonKeyBindings {
 		c.BindKey(c.refreshCompletion, v.Key)
 	}
+	c.BindKey(func(ctx PressContext) (exit bool) {
+		if ctx.GetBuffer().Text() == "" {
+			c.Completions.Reset()
+		}
+		return
+	}, Backspace)
 	c.init = true
 }
 
@@ -205,7 +211,7 @@ func (c *BlocksCompletion) refreshCompletion(ctx PressContext) (exit bool) {
 	if !c.Active() || c.Completions == nil {
 		return
 	}
-	// c.Update(ctx.GetBuffer().Document())
+	c.Update(ctx.GetBuffer().Document())
 	return
 }
 
