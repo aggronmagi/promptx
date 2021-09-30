@@ -205,7 +205,7 @@ func (c *BlocksCompletion) refreshCompletion(ctx PressContext) (exit bool) {
 	if !c.Active() || c.Completions == nil {
 		return
 	}
-	c.Update(ctx.GetBuffer().Document())
+	// c.Update(ctx.GetBuffer().Document())
 	return
 }
 
@@ -258,7 +258,7 @@ func (c *BlocksCompletion) EnterSelect(buf *Buffer) (ok bool) {
 		buf.InsertText(s.Text, false, true)
 	}
 
-	c.Update(buf.Document())
+	// c.Update(buf.Document())
 	return true
 }
 

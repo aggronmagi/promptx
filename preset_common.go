@@ -84,7 +84,7 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 		if new, ok := m.history.Older(buf.Text()); ok {
 			buf.Reset()
 			buf.InsertText(new, false, true)
-			m.Completion.Update(ctx.GetBuffer().Document())
+			// m.Completion.Update(ctx.GetBuffer().Document())
 		}
 		return false
 	}, ControlP, Up)
@@ -93,7 +93,7 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 		if new, ok := m.history.Newer(buf.Text()); ok {
 			buf.Reset()
 			buf.InsertText(new, false, true)
-			m.Completion.Update(ctx.GetBuffer().Document())
+			// m.Completion.Update(ctx.GetBuffer().Document())
 		}
 		return false
 	}, ControlN, Down)
@@ -321,7 +321,7 @@ func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 			}
 		}
 		if status == CancelStatus {
-			m.Completion.Update(buffer.NewDocument())
+			// m.Completion.Update(buffer.NewDocument())
 		}
 	}
 
