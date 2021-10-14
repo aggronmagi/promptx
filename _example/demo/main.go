@@ -339,6 +339,8 @@ func main() {
 	// set log writer
 	log.SetOutput(p.Stdout())
 
+	p.ExecCommand([]string{"mode"})
+
 	p.Input("input xx:")
 	p.Select("select xx:", []string{
 		"x1",

@@ -168,6 +168,14 @@ func (p *Promptx) SetPromptWords(words ...*Word) {
 	}
 }
 
+func (p *Promptx) ExecCommand(args []string) {
+	if iface, ok := p.cc.BlocksManager.(interface {
+		ExecCommand(args []string)
+	}); ok {
+		iface.ExecCommand(args)
+	}
+}
+
 // Print = fmt.Print
 func (p *Promptx) Print(v ...interface{}) {
 	fmt.Fprint(p.Stdout(), v...)

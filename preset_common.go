@@ -223,6 +223,10 @@ func (m *CommonBlockManager) execCommand(oldCtx Context, command string) {
 		oldCtx.Println("command set deal functions.", command)
 	}
 }
+func (m *CommonBlockManager) ExecCommand(args []string) {
+	line := strings.Join(args, " ")
+	m.execCommand(m.GetContext(), line)
+}
 
 // SetPrompt set prefix text
 func (m *CommonBlockManager) SetPrompt(text string) {
