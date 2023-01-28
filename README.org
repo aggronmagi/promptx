@@ -1,19 +1,230 @@
 
 
 * promptx
-Library for creating interactive cli applications with powerful interactive prompts.
 
-** Example
-[[./_example/demo/main.go][main.go]]
+promptx是可定制化的交互式 cli 应用程序的库。从[[https://github.com/c-bata/go-prompt/][go-prompt]]复制了部分文件.初版实现时候也有参考 [[https://github.com/abiosoft/ishell][ishell]].
 
-** Copy File List
+支持简单命令以及命令集.
+
+简单命令就是所有命令初始都显示出来.
+
+命令集是根据需要将命令拆分成不同的组,只有处在某个状态下的时候才会显示.不同命令集下不共享操作的历史记录.
+
+所有交互式命令都使用链式调用创建.
+
+默认 Control-C 放弃输入, Control-D 退出进程.
+
+允许异步打印日志.例:
+#+begin_src go
+p := promptx.NewPromptx()
+log.SetOutput(p.Stdout())
+#+end_src
+这样即使在其他gorountine使用 ~log~ 打印日志也不会影响正在输入的的选项.
+
+zap日志需要通过 ~p.Stdout()~ 定制实现zapcore. 
+
+** 安装
+#+begin_src shell
+go get github.com/aggronmagi/promptx@latest
+#+end_src
+** 简单命令
+#+begin_src go
+func loginCommand() *promptx.Cmd {
+	return promptx.NewCommand("login", "登录游戏",
+		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
+		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+	).ExecFunc(func(ctx promptx.CommandContext) {
+		// 选择的登录服索引
+		index := ctx.CheckSelectIndex(0)
+		// 登录的服务字符串
+		svcName := ctx.CheckString(0)
+		// 输入的账号
+		account := ctx.CheckString(1)
+		
+		// custom logic
+		// ....
+
+		//
+		ctx.Println("login success")
+	})
+}
+
+func main() {
+    p := promptx.NewCommandPromptx(
+		loginCommand,
+		// other command ...
+	)
+	p.Run()
+}
+#+end_src
+完整例子 [[./_example/demo/main.go][Common Command]]
+** 命令集
+#+begin_src go
+
+func loginCommand() *promptx.Cmd {
+	return promptx.NewCommand("login", "登录游戏",
+		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
+		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+	).ExecFunc(func(ctx promptx.CommandContext) {
+		// 输入的string
+		id := ctx.CheckString(1)
+		ctx.Println(id, "login success")
+		state = 1
+		//
+		ctx.SwitchCommandSet("linked")
+	})
+}
+
+func logoutCommand() *promptx.Cmd {
+	return promptx.NewCommand("logout", "退出游戏").ExecFunc(func(ctx promptx.CommandContext) {
+		state = 0
+		ctx.SwitchCommandSet("")
+	})
+}
+
+func main() {
+	p := promptx.NewPromptx()
+	// default set
+	p.AddCommandSet("", []*promptx.Cmd{
+		loginCommand(),
+	},promptx.WithCommandSetOptionPrompt("not login >> "))
+	//
+	p.AddCommandSet("linked", []*promptx.Cmd{
+		logoutCommand(),
+	}, promptx.WithCommandSetOptionPrompt("linked >> "))
+
+	p.Run()
+}
+#+end_src
+完整例子 [[./_example/commandset/main.go][Command Set]]
+** API
+*** 创建命令
+#+begin_src go
+// NewCommand 创建交互式命令 name:命令名称 help:提示信息 args 命令参数 
+func NewCommand(name, help string, args ...CommandParameter) *Cmd
+// 设置命令执行函数 
+func (c *Cmd) ExecFunc(f func(ctx CommandContext)) *Cmd 
+// 设置命令别名  
+func (c *Cmd) Aliases(aliases ...string) *Cmd 
+// SubCommands 添加子命令 
+func (c *Cmd) SubCommands(cmds ...*Cmd) *Cmd
+#+end_src
+*** 命令参数 需要设置提示信息,如果用户没有一次性输入完整,提示用户输入.
+#+begin_src go
+// 手动输入string作为参数
+func WithArgsInput(tip string, check InputChecker, opts ...InputOption) CommandParameter
+// 单选参数 多选一
+func WithArgSelect(tip string, list []string, opts ...SelectOption) CommandParameter 
+#+end_src
+*** Input类型参数的检测
+#+begin_src go
+// 检测输入必须是非空字符串
+func InputNotEmpty() InputChecker
+// 检测输入必须是数值类型 
+func InputInteger() InputChecker
+// 检测输入必须是非0数字
+func InputNotZeroInteger() InputChecker
+// 检测输入必须是自然数 (1,2,3....)
+func InputNaturalNumber() InputChecker
+// 检测输入必须是在min,max区间的数字 
+func InputIntegerRange(min, max int64) InputChecker
+// 检测输入必须是IP端口(例 127.0.0.1:8080)
+func InputIPPort() InputChecker
+// 检测输入必须是IP端口数组,使用","分隔
+func InputAddrsArray() InputChecker 
+#+end_src
+*** 命令执行函数的签名 
+#+begin_src go
+// 函数签名
+func xx(ctx CommandContext) {
+}
+#+end_src
+*** 命令上下文 CommandContext
+命令执行函数内 使用 ~CommandContext~ 提供的 ~Check...~ 方法获取参数.
+
+所有Check方法,如果没有用户没有输入,会通过panic打断流程.或者是输入了不符合预期的值,也会通过panic打断流程.
+
+Check 函数的调用应该和创建命令时候输入的 ~CommandParameter~ 一一匹配.
+
+Check 函数的Index参数从0开始.
+
+~CommandParameter~ 检测通过之后,内部保留的玩家输入都是string类型.所以 ~CheckString~ 只要索引位置输入了值,都是有效的.
+
+~CheckSelectIndex~ 仅用于 ~WithArgSelect~ 对应的参数,获取玩家输入的是第几个选项(从0开始)
+#+begin_src go
+// CommandContext
+type CommandContext interface {
+	Context
+
+	CheckString(index int) string
+	CheckInteger(index int) int64
+	CheckIPPort(index int) (ip, port string)
+	CheckAddrs(index int) (addrs []string)
+	CheckSelectIndex(index int) int
+}
+#+end_src
+*** 命令集
+可以添加不同的命令集合,首次添加的命令集合会设置为默认的命令集.
+#+begin_src go
+type Context interface {
+	// others interface function ...
+	// AddCommandSet 添加命令集，首次添加命令集时会自动切换。
+	AddCommandSet(name string, cmds []*Cmd, opts ...CommandSetOption) 
+	// SwitchCommandSet 切换到指定命令集,参数会传递给 ChangeNotify 函数
+	SwitchCommandSet(name string, args ...interface{})
+}
+#+end_src
+**** 选项
+命令集添加时候,允许设置以下选项:
+#+begin_src go
+// 设置当前命令集的操作记录持久化保存的文件.如果不设置,每次切换命令集都会清空历史操作记录.
+func WithCommandSetOptionHistoryFile(v string) CommandSetOption 
+// 设置当前命令集内所有命令执行的前置检测函数
+func WithCommandSetOptionPreCheck(v func(ctx Context) error) CommandSetOption 
+// 设置切换到命令集时的提示字符串(自定义文字颜色)
+func WithCommandSetOptionPromptWords(v ...*Word) CommandSetOption
+// 设置切换到命令集时的提示字符串(默认颜色)
+func WithCommandSetOptionPrompt(prompt string) CommandSetOption
+// 设置切换到命令集时候的通知函数,args为 SwitchCommandSet 传递的参数.
+func WithCommandSetOptionChangeNotify(v func(ctx Context, args []interface{})) CommandSetOption 
+#+end_src
+
+*** Word 彩色文字
+#+begin_src go
+// WordDefault color text
+func WordDefault(str string) *Word 
+// WordBlue color text
+func WordBlue(str string) *Word 
+// WordBrown color text
+func WordBrown(str string) *Word 
+// WordCyan color text
+func WordCyan(str string) *Word 
+// WordGreen color text
+func WordGreen(str string) *Word 
+// WordPurple color text
+func WordPurple(str string) *Word 
+// WordRed color text
+func WordRed(str string) *Word 
+// WordTurquoise color text
+func WordTurquoise(str string) *Word 
+// WordWhite color text
+func WordWhite(str string) *Word 
+// WordYellow color text
+func WordYellow(str string) *Word 
+#+end_src
+** 完整例子
+[[./_example/demo/main.go][Common Command]]
+
+[[./_example/commandset/main.go][Command Set]]
+
+** 从[[https://github.com/c-bata/go-prompt/][go-prompt]]复制文件列表
 | dir-or-files                            | source-repo | modify |
 |-----------------------------------------+-------------+--------|
 | internal/ debug,strings,bisect          | [[https://github.com/c-bata/go-prompt/][go-prompt]]   |        |
 | output/input/terminal/completion/buffer | [[https://github.com/c-bata/go-prompt/][go-prompt]]   |        |
 
 
-** Short Key
+** 编辑快捷键
 *** emacs key bind
 
 Moving the cursor
@@ -43,3 +254,6 @@ Editing
 | [ ] | Esc  + t | Swap the last two words before the cursor.              |
 | [ ] | ctrl + y | Paste the last thing to be cut (yank)                   |
 | [ ] | ctrl + _ | Undo                                                    |
+** 定制化
+promptx 将很多逻辑都做成了可配置项. 查看 "gen_options_*.go"
+

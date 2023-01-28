@@ -10,8 +10,8 @@ import (
 )
 
 // CommonOptionsOptionDeclareWithDefault promptx options
-// generate by https://github.com/timestee/optiongen
-//go:generate optionGen --option_with_struct_name=true --v=true
+// generate by https://github.com/aggronmagi/gogen/
+//go:generate gogen option -n CommonOption -f -o gen_options_common.go
 func CommonOptionsOptionDeclareWithDefault() interface{} {
 	return map[string]interface{}{
 		"TipText":         "",
@@ -35,6 +35,8 @@ func CommonOptionsOptionDeclareWithDefault() interface{} {
 		"AlwaysCheckCommand": bool(false),
 		// history file
 		"History": string(""),
+		// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
+		"CommandPreCheck": (func(ctx Context) error)(nil),
 	}
 }
 
@@ -163,7 +165,7 @@ func (m *CommonBlockManager) initCommand() {
 		return
 	}
 	m.root = &Cmd{}
-	m.root.AddCmd(cc.Commands...)
+	m.root.SubCommands(cc.Commands...)
 	// replace completion
 	m.Completion.ApplyOptions(
 		WithCompleteOptionCompleter(m.completeCommand),
@@ -188,7 +190,7 @@ func (m *CommonBlockManager) validCommand(status int, d *Document) error {
 	if len(d.Text) == 0 {
 		return nil
 	}
-	cmds, _, err := m.root.ParseInput(d.Text, false)
+	cmds, _, err := m.root.ParseInput(d.Text)
 	if err != nil {
 		return err
 	}
@@ -201,20 +203,37 @@ func (m *CommonBlockManager) execCommand(oldCtx Context, command string) {
 	if len(command) == 0 {
 		return
 	}
-	ctx := &CommandContext{}
+	// cmd precheck
+	if m.cc.CommandPreCheck != nil {
+		err := m.cc.CommandPreCheck(oldCtx)
+		if err != nil {
+			oldCtx.Println("precheck failed,", err)
+			return
+		}
+	}
+	ctx := &CmdContext{}
 	ctx.Context = m.GetContext()
 	ctx.Line = command
-	ctx.Cmds, ctx.Args, _ = m.root.ParseInput(command, true)
+	ctx.Cmds, ctx.Args, _ = m.root.ParseInput(command)
 	ctx.Root = m.root
+	if gt, ok := ctx.Context.(interface {
+		getPresetOptions() (*InputOptions, *SelectOptions)
+	}); ok {
+		ctx.InputCC, ctx.SelectCC = gt.getPresetOptions()
+	}
+
 	// debug.Println("find cmd size:", len(ctx.Cmds))
 	// find last command which set exec func.
 	find := false
 	for i := len(ctx.Cmds) - 1; i >= 0; i-- {
 		cmd := ctx.Cmds[i]
 		// debug.Println("find ", cmd.Name)
-		if cmd.Func != nil {
-			// exec command func
-			cmd.Func(ctx)
+		if cmd.execFunc != nil {
+			ctx.Cur = cmd
+			// exec command
+			ctx.execCommand()
+			// // exec command func
+			// cmd.Func(ctx)
 			find = true
 			break
 		}
@@ -260,6 +279,45 @@ func (m *CommonBlockManager) SetPromptWords(words ...*Word) {
 	m.PreWords.test = func() {
 		debug.Println("get prompts words", words)
 	}
+}
+
+// ResetCommands 重置命令集合
+func (m *CommonBlockManager) ResetCommands(cmds ...*Cmd) {
+	m.ApplyOption(WithCommonOptionCommands(cmds...))
+}
+
+// RemoveHistory remove from history
+func (m *CommonBlockManager) RemoveHistory(line string) {
+	m.history.Remove(line)
+}
+
+// AddHistory add line to history
+func (m *CommonBlockManager) AddHistory(line string) {
+	m.history.Add(line)
+}
+
+func (m *CommonBlockManager) ResetHistoryFile(filename string) {
+	cc := m.cc
+	if filename == cc.History {
+		m.history.Reset()
+		return
+	}
+	if len(m.hf) > 0 {
+		debug.AssertNoError(m.history.Save(m.hf))
+	}
+
+	m.history.Reset()
+
+	cc.History = filename
+	if len(filename) < 1 {
+		return
+	}
+	debug.AssertNoError(m.history.Load(cc.History))
+	m.hf = cc.History
+}
+
+func (m *CommonBlockManager) SetCommandPreCheck(f func(ctx Context) error) {
+	m.cc.CommandPreCheck = f
 }
 
 func (m *CommonBlockManager) SetOption(opt CommonOption) {

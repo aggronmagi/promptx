@@ -33,6 +33,29 @@ func (h *History) Add(input string) {
 	h.Rebuild("", true)
 }
 
+func (h *History) Remove(input string) {
+	input = strings.TrimSpace(input)
+	if len(input) == 0 {
+		return
+	}
+	n, ok := h.cache[input]
+	if !ok {
+		return
+	}
+	if n-1 < 1 {
+		delete(h.cache, input)
+		for k := range h.histories {
+			if h.histories[k] == input {
+				h.histories = append(h.histories[:k], h.histories[k+1:]...)
+				break
+			}
+		}
+	}else {
+		h.cache[input] -= 1
+	}
+	h.Rebuild("", true)
+}
+
 func (h *History) Rebuild(buf string, force bool) {
 	buf = strings.TrimSpace(buf)
 	debug.Println("rebuild-buf", buf)

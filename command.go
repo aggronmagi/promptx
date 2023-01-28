@@ -12,23 +12,6 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// CommandContext run context
-type CommandContext struct {
-	Context
-	// command and subcommands
-	Cmds []*Cmd
-	// input args
-	Args []string
-	// input line
-	Line string
-	// Root root command. use for dynamic modify command.
-	Root *Cmd
-}
-
-// // CmdArg command args interface
-// type CmdArg interface {
-// }
-
 // Cmd is a shell command handler.
 //
 // NOTE: Args and Flags are mutually exclusive with SubCommands,
@@ -42,98 +25,136 @@ type CommandContext struct {
 // Args must input if it defines.
 type Cmd struct {
 	// Command name.
-	Name string
+	name string
 	// Command name aliases.
-	Aliases []string
+	aliases []string
 	// Function to execute for the command.
-	Func func(c *CommandContext)
+	execFunc func(c CommandContext)
 	// One liner help message for the command.
-	Help string
+	help string
 	// More descriptive help message for the command.
-	LongHelp string
+	longHelp string
 
-	// DynamicCmd use for command name dynamic change.
-	// NOTE: DynamicCmd are mutually exclusive with Name.
-	DynamicCmd func(line string) []*Suggest
+	// dynamicCmdTip use for command name dynamic change.
+	// NOTE: dynamicCmdTip are mutually exclusive with Name.
+	dynamicCmdTip func(line string) []*Suggest
 
-	// SubCommands. sub command.
-	SubCommands []*Cmd
+	// subCommands. sub command.
+	subCommands []*Cmd
 
-	// // Args command args.
-	// Args []CmdArg
+	// args command args.
+	args []CommandParameter
 
-	// Command Flag Paramter
-	// if return value not nil,it will be stored in flagsValue. Use GetFlagValue() get it.
-	// NOTE: parent command's flags is also parsed and can use.
-	NewFlags func(set *pflag.FlagSet) interface{}
-
-	flagsValue   interface{}
 	children     map[string]*Cmd
 	dynamicCache []*Suggest     // dynamic cmd cache
 	set          *pflag.FlagSet // flags cache
 }
 
-// AddCmd adds cmd as a subcommand.
-func (c *Cmd) AddCmd(cmds ...*Cmd) {
-	for _, cmd := range cmds {
-		c.SubCommands = append(c.SubCommands, cmd)
+// NewCommand Create an interactive command
+// 
+// name: command name
+// help: prompt information
+// args: command parameters
+func NewCommand(name, help string, args ...CommandParameter) *Cmd {
+	return &Cmd{
+		name: name,
+		help: help,
+		args: args,
 	}
-	sort.Sort(cmdSorter(c.SubCommands))
 }
 
-// DeleteCmd deletes cmd from subcommands.
-func (c *Cmd) DeleteCmd(name string) {
+// NewCommandWithFunc create one command
+func NewCommandWithFunc(name, help string, f func(ctx CommandContext), args ...CommandParameter) *Cmd {
+	return &Cmd{
+		name:     name,
+		help:     help,
+		execFunc: f,
+		args:     args,
+	}
+}
+
+// ExecFunc Set command execution function
+//
+// see CommondContext for detail.
+func (c *Cmd) ExecFunc(f func(ctx CommandContext)) *Cmd {
+	c.execFunc = f
+	return c
+}
+
+// 
+func (c *Cmd) DynamicTip(f func(line string) []*Suggest) *Cmd {
+	c.dynamicCmdTip = f
+	return c
+}
+
+// Aliases Set command alias
+func (c *Cmd) Aliases(aliases ...string) *Cmd {
+	c.aliases = aliases
+	return c
+}
+func (c *Cmd) LogHelp(long string) *Cmd {
+	c.longHelp = long
+	return c
+}
+
+// SubCommands adds cmd as a subcommand.
+func (c *Cmd) SubCommands(cmds ...*Cmd) *Cmd {
+	for _, cmd := range cmds {
+		c.subCommands = append(c.subCommands, cmd)
+	}
+	sort.Sort(cmdSorter(c.subCommands))
+	return c
+}
+
+// DeleteSubCommand deletes cmd from subcommands.
+func (c *Cmd) DeleteSubCommand(name string) {
 	c.fixCmd()
 	if c.children == nil {
 		return
 	}
 	delete(c.children, name)
-	for i := len(c.SubCommands) - 1; i >= 0; i-- {
-		if c.SubCommands[i].Name == name {
-			c.SubCommands = append(c.SubCommands[:i], c.SubCommands[i+1:]...)
+	for i := len(c.subCommands) - 1; i >= 0; i-- {
+		if c.subCommands[i].name == name {
+			c.subCommands = append(c.subCommands[:i], c.subCommands[i+1:]...)
 			break
 		}
 	}
 }
 
 func (c *Cmd) fixCmd() {
-	if len(c.SubCommands) == len(c.children) {
+	if len(c.subCommands) == len(c.children) {
 		return
 	}
-	c.children = make(map[string]*Cmd, len(c.SubCommands))
-	for _, v := range c.SubCommands {
-		if v.NewFlags != nil {
-			v.set = pflag.NewFlagSet(v.Name, pflag.ContinueOnError)
-			v.flagsValue = v.NewFlags(v.set)
-		}
+	c.children = make(map[string]*Cmd, len(c.subCommands))
+	for _, v := range c.subCommands {
 
 		// fix command alias
-		for k := len(v.Aliases) - 1; k >= 0; k-- {
+		for k := len(v.aliases) - 1; k >= 0; k-- {
 			// contains each other will cause unexpected behavior
-			if strings.Contains(v.Aliases[k], v.Name) ||
-				strings.Contains(v.Name, v.Aliases[k]) {
-				v.Aliases = append(v.Aliases[:k], v.Aliases[k+1:]...)
+			if strings.Contains(v.aliases[k], v.name) ||
+				strings.Contains(v.name, v.aliases[k]) {
+				v.aliases = append(v.aliases[:k], v.aliases[k+1:]...)
 				continue
 			}
 		}
 
 		v.fixCmd()
-		c.children[v.Name] = v
+		c.children[v.name] = v
 	}
 	// has repeated name command
-	if len(c.SubCommands) != len(c.children) {
-		c.SubCommands = c.SubCommands[:0]
+	if len(c.subCommands) != len(c.children) {
+		c.subCommands = c.subCommands[:0]
 		for _, v := range c.children {
-			c.SubCommands = append(c.SubCommands, v)
+			c.subCommands = append(c.subCommands, v)
 		}
 	}
-	sort.Sort(cmdSorter(c.SubCommands))
+	sort.Sort(cmdSorter(c.subCommands))
 }
 
 // Children returns the subcommands of c.
 func (c *Cmd) Children() []*Cmd {
 	c.fixCmd()
-	return c.SubCommands
+	return c.subCommands
 }
 
 func (c *Cmd) hasSubcommand() bool {
@@ -155,18 +176,18 @@ func (c Cmd) HelpText() string {
 			fmt.Fprintln(&b, s...)
 		}
 	}
-	if c.LongHelp != "" {
-		p(c.LongHelp)
-	} else if c.Help != "" {
-		p(c.Help)
-	} else if c.Name != "" {
-		p(c.Name, "has no help")
+	if c.longHelp != "" {
+		p(c.longHelp)
+	} else if c.help != "" {
+		p(c.help)
+	} else if c.name != "" {
+		p(c.name, "has no help")
 	}
 	if c.hasSubcommand() {
 		p("Commands:")
 		w := tabwriter.NewWriter(&b, 0, 4, 2, ' ', 0)
-		for _, child := range c.SubCommands {
-			fmt.Fprintf(w, "\t%s\t\t\t%s\n", child.Name, child.Help)
+		for _, child := range c.subCommands {
+			fmt.Fprintf(w, "\t%s\t\t\t%s\n", child.name, child.help)
 		}
 		w.Flush()
 		p()
@@ -182,11 +203,11 @@ func (c *Cmd) isCmd(name string) bool {
 			}
 		}
 	} else {
-		if c.Name == name {
+		if c.name == name {
 			return true
 		}
 	}
-	for _, v := range c.Aliases {
+	for _, v := range c.aliases {
 		if v == name {
 			return true
 		}
@@ -198,7 +219,7 @@ func (c *Cmd) isCmd(name string) bool {
 func (c *Cmd) findChildCmd(name string) *Cmd {
 
 	// find perfect matches first
-	for _, cmd := range c.SubCommands {
+	for _, cmd := range c.subCommands {
 		if cmd.isCmd(name) {
 			return cmd
 		}
@@ -208,7 +229,7 @@ func (c *Cmd) findChildCmd(name string) *Cmd {
 }
 
 // ParseInput parse input,and check valid
-func (c *Cmd) ParseInput(line string, reset bool) (cmds []*Cmd, args []string, err error) {
+func (c *Cmd) ParseInput(line string) (cmds []*Cmd, args []string, err error) {
 	fields := strings.Fields(line)
 	father := c
 	discard := -1
@@ -226,45 +247,40 @@ func (c *Cmd) ParseInput(line string, reset bool) (cmds []*Cmd, args []string, e
 	if discard >= 0 {
 		fields = fields[discard:]
 	}
-	set := pflag.NewFlagSet("root", pflag.ContinueOnError)
-	if c.set != nil {
-		set.AddFlagSet(c.set)
-	}
-	for k := len(cmds) - 1; k >= 0; k-- {
-		cmd := cmds[k]
-		if cmd.set == nil {
-			continue
-		}
-		set.AddFlagSet(cmd.set)
-		// tmp := pflag.NewFlagSet(cmd.Name, pflag.ContinueOnError)
-		// cmd.flagsValue = cmd.NewFlags(tmp)
-		// set.AddFlagSet(tmp)
-	}
-	if reset {
-		// reset default value
-		set.VisitAll(func(f *pflag.Flag) {
-			f.Value.Set(f.DefValue)
-		})
-	}
-	// parse flag failed
-	err = set.Parse(fields)
-	// args
-	args = set.Args()
-
+	args = fields
 	return
 }
 
+func (c *Cmd) FixCommandLine(line string, args []string) string {
+	fields := strings.Fields(line)
+	father := c
+	fixs := make([]string, 0, len(fields))
+	for _, arg := range fields {
+		if cmd := father.findChildCmd(arg); cmd != nil {
+			fixs = append(fixs, arg)
+			father = cmd
+			continue
+		}
+		break
+	}
+	fixs = append(fixs, args...)
+	return strings.Join(fixs, " ")
+}
+
 func (c *Cmd) buildCache(line string) {
-	if c.DynamicCmd == nil || c.dynamicCache != nil {
+	if c.dynamicCmdTip == nil || c.dynamicCache != nil {
 		return
 	}
-	c.dynamicCache = c.DynamicCmd(line)
+	c.dynamicCache = c.dynamicCmdTip(line)
+	for _, s := range c.dynamicCache {
+		s.Text = c.name + " " + s.Text
+	}
 }
 
 func (c *Cmd) suggest() *Suggest {
 	return &Suggest{
-		Text:        c.Name,
-		Description: c.Help,
+		Text:        c.name,
+		Description: c.help,
 	}
 }
 
@@ -311,22 +327,22 @@ func (c *Cmd) findSugest(line []rune, pos int, origLine string, cmds []*Cmd) (su
 		offset = len(name)
 		return
 	}
-	for _, child := range c.SubCommands {
+	for _, child := range c.subCommands {
 		// command name
-		if child.DynamicCmd != nil {
+		if child.dynamicCmdTip != nil {
 			child.buildCache(origLine)
 			for _, v := range child.dynamicCache {
 				matchCmd([]rune(v.Text), child, v)
 			}
-		} else if child.Name != "" {
-			matchCmd([]rune(child.Name), child, nil)
+		} else if child.name != "" {
+			matchCmd([]rune(child.name), child, nil)
 		}
 		// command alias
 		// if nextCmd != child {
-		for _, alias := range child.Aliases {
+		for _, alias := range child.aliases {
 			matchCmd([]rune(alias), child, &Suggest{
 				Text:        alias,
-				Description: child.Help,
+				Description: child.help,
 			})
 		}
 		//}
@@ -404,5 +420,5 @@ func (c *Cmd) FindSuggest(doc *Document) []*Suggest {
 type cmdSorter []*Cmd
 
 func (c cmdSorter) Len() int           { return len(c) }
-func (c cmdSorter) Less(i, j int) bool { return c[i].Name < c[j].Name }
+func (c cmdSorter) Less(i, j int) bool { return c[i].name < c[j].name }
 func (c cmdSorter) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }

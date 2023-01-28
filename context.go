@@ -1,50 +1,5 @@
 package promptx
 
-import "io"
-
-// Context Run Command Context
-type Context interface {
-	// Input get input string. if cancel return error io.EOF
-	Input(tip string, opts ...InputOption) (result string, eof error)
-	// Select select one from list. if cancel,return -1
-	Select(tip string, list []string, opts ...SelectOption) (sel int)
-	// MulSel like Select, but can choose list more then one. if cancel, return empty slice
-	MulSel(tip string, list []string, opts ...SelectOption) (sel []int)
-	// Stop stop run
-	Stop()
-	// EnterRawMode enter raw mode for read key press real time
-	EnterRawMode() (err error)
-	// ExitRawMode exit raw mode
-	ExitRawMode() (err error)
-	// Stdout return a wrap stdout writer. it can refersh view correct
-	Stdout() io.Writer
-	// Stderr std err
-	Stderr() io.Writer
-	// ClearScreen clears the screen.
-	ClearScreen()
-	// SetTitle set window title
-	SetTitle(title string)
-	// ClearTitle clear window title
-	ClearTitle()
-	// SetPrompt update prompt string. prompt will auto add space suffix.
-	SetPrompt(prompt string)
-	// SetPromptWords update prompt string. custom display.
-	SetPromptWords(words ...*Word)
-	// Print = fmt.Print
-	Print(v ...interface{})
-	// Printf = fmt.Printf
-	Printf(fmt string, v ...interface{})
-	// Println = fmt.Println
-	Println(v ...interface{})
-
-	// WPrint  print words
-	WPrint(words ...*Word)
-	// WPrintln print words and newline
-	WPrintln(words ...*Word)
-}
-
-var _ Context = &Promptx{}
-
 ////////////////////////////////////////////////////////////////////////////////
 
 // PressContext export for logic loop

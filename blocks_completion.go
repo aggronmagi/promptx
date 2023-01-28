@@ -10,8 +10,8 @@ import (
 type Completer func(in Document) []*Suggest
 
 // CompleteOptionsOptionDeclareWithDefault promptx options
-// generate by https://github.com/timestee/optiongen
-//go:generate optionGen --option_with_struct_name=true --v=true
+// generate by https://github.com/aggronmagi/gogen/
+//go:generate gogen option -n CompleteOption -f -o gen_options_complete.go
 func CompleteOptionsOptionDeclareWithDefault() interface{} {
 	return map[string]interface{}{
 		"SuggestionTextColor":          Color(White),

@@ -1,18 +1,16 @@
 package main
 
 import (
-	"flag"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"strconv"
 	"time"
 
 	"github.com/aggronmagi/promptx"
 	"github.com/aggronmagi/promptx/internal/debug"
-	"github.com/spf13/pflag"
 )
 
 // Function constructor - constructs new function for listing given directory
@@ -31,315 +29,187 @@ func listFiles(path string) func(string) []*promptx.Suggest {
 	}
 }
 
+func colorCommand() *promptx.Cmd {
+	return promptx.NewCommand("colorword", "show word color example").ExecFunc(func(ctx promptx.CommandContext) {
+		ctx.WPrint(&promptx.AskWord, promptx.WordRed(" Red "),
+			promptx.WordCyan(" Cyan "),
+			promptx.WordBlue(" Blue "),
+			promptx.WordGreen(" Green "),
+			promptx.WordPurple(" Purple "),
+			promptx.WordTurquoise(" Turquoise "),
+			promptx.WordWhite(" White "),
+			promptx.WordYellow(" Yellow "),
+			&promptx.NewLineWord,
+		)
+	})
+}
+
+func loginCommand() *promptx.Cmd {
+	return promptx.NewCommand("login", "登录游戏",
+		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
+		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+	).ExecFunc(func(ctx promptx.CommandContext) {
+		// 选择的登录服索引
+		ctx.CheckSelectIndex(0)
+		// 登录的服务字符串
+		ctx.CheckString(0)
+		// 输入的string
+		ctx.CheckString(1)
+		ctx.Println("login success")
+	})
+}
+
+func login2Command() *promptx.Cmd {
+	return promptx.NewCommand("login2", "测试相似命令(test similar command)",
+		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
+		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+	).ExecFunc(func(ctx promptx.CommandContext) {
+		// 选择的登录服索引
+		ctx.CheckSelectIndex(0)
+		// 登录的服务字符串
+		ctx.CheckString(0)
+		// 输入的string
+		ctx.CheckString(1)
+	})
+}
+
+func editCommand() *promptx.Cmd {
+	return promptx.NewCommand("edit", "show edit mode").ExecFunc(func(ctx promptx.CommandContext) {
+		log.Println("current is emacs mode")
+	}).SubCommands(
+		promptx.NewCommand("vi", "修改vi模式").ExecFunc(func(ctx promptx.CommandContext) {
+			log.Println("not support vim mode now!")
+		}),
+		promptx.NewCommand("emacs", "use emacs edit mode").ExecFunc(func(c promptx.CommandContext) {
+			log.Println("use emacs mode now!")
+		}),
+	)
+}
+
+func sayCommand() *promptx.Cmd {
+	return promptx.NewCommand("say", "say some words").SubCommands(
+		promptx.NewCommand("hello", "say hello").ExecFunc(func(ctx promptx.CommandContext) {
+			log.Println("hello!")
+		}),
+		promptx.NewCommand("bye", "say bye and exit").ExecFunc(func(ctx promptx.CommandContext) {
+			ctx.Println("bye bye")
+			ctx.Stop()
+		}),
+	)
+}
+
+//
+// func dynamicTipCommand() *promptx.Cmd {
+// 	return promptx.NewCommand("dynamic", "select files for operation").SubCommands(
+// 		promptx.NewCommand("sub", "").DynamicTip(listFiles("./")).ExecFunc(func(ctx promptx.CommandContext) {
+// 			//ctx.Println("select files", ctx.CheckString(0))
+// 		}),
+// 	).ExecFunc(func(ctx promptx.CommandContext) {
+// 		ctx.Println("select files", ctx.CheckString(0))
+// 	})
+// }
+
+func promptCommand() *promptx.Cmd {
+	return promptx.NewCommand("setprompt", "set prompt string",
+		promptx.WithArgSelect("color", []string{"red", "green"}),
+		promptx.WithArgsInput("prompt:", promptx.InputNotEmpty()),
+	).ExecFunc(func(ctx promptx.CommandContext) {
+		color := ctx.CheckSelectIndex(0)
+		if color == 0 {
+			ctx.SetPromptWords(&promptx.AskWord, promptx.WordRed(" "+ctx.CheckString(1)))
+			return
+		}
+		ctx.SetPromptWords(&promptx.AskWord, promptx.WordGreen(" "+ctx.CheckString(1)))
+	}).SubCommands(
+		promptx.NewCommand("simple", "no color",
+			promptx.WithArgsInput("prompt:", promptx.InputNotEmpty()),
+		).ExecFunc(func(ctx promptx.CommandContext) {
+			ctx.SetPrompt(ctx.CheckString(0))
+		}),
+	)
+}
+func lsCommand() *promptx.Cmd {
+	return promptx.NewCommand("ls", "linux command ls").ExecFunc(func(ctx promptx.CommandContext) {
+		ctx.ExitRawMode()
+		cmd := exec.Command("ls", "-alh")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+		ctx.EnterRawMode()
+	})
+}
+
+func bashCommand() *promptx.Cmd {
+	return promptx.NewCommand("bash", "enter linux bash").ExecFunc(func(ctx promptx.CommandContext) {
+		err := ctx.ExitRawMode()
+		ctx.Println("exit rawmode:", err)
+		cmd := exec.Command("bash")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		ctx.Println("run result:", err)
+		ctx.EnterRawMode()
+	})
+}
+func sleepCommand() *promptx.Cmd {
+	return promptx.NewCommand("sleep", "sleep some second",
+		promptx.WithArgsInput("sleep second:", promptx.InputInteger()),
+	).ExecFunc(func(ctx promptx.CommandContext) {
+		time.Sleep(time.Second * time.Duration(ctx.CheckInteger(0)))
+	})
+}
+
+func asyncPrintCommand() *promptx.Cmd {
+	return promptx.NewCommand("async-print", "async print message",
+		promptx.WithArgsInput("print second:", promptx.InputNaturalNumber()),
+	).ExecFunc(func(ctx promptx.CommandContext) {
+		c, cancel := context.WithTimeout(context.Background(), time.Duration(ctx.CheckInteger(0))*time.Second)
+		go func() {
+			defer cancel()
+			ticker := time.NewTicker(time.Millisecond * 500)
+			for {
+				select {
+				case <-ticker.C:
+					fmt.Fprintln(ctx.Stdout(), "async message "+time.Now().String())
+				case <-c.Done():
+					return
+				}
+			}
+		}()
+		ctx.Println("async message command")
+	})
+}
+
+func panicCommand() *promptx.Cmd {
+	return promptx.NewCommand("panic", "test panic command").ExecFunc(func(ctx promptx.CommandContext) {
+		ctx.CheckInteger(1)
+	})
+}
+
 var cmds = []*promptx.Cmd{
-	&promptx.Cmd{
-		Name: "mode",
-		Help: "show mode or modify mode",
-		SubCommands: []*promptx.Cmd{
-			&promptx.Cmd{
-				Name: "vi",
-				Help: "修改vi模式",
-				Func: func(c *promptx.CommandContext) {
-					log.Println("sorry! not support vim mode now!")
-					return
-				},
-			},
-			&promptx.Cmd{
-				Name: "emacs",
-				Help: "use emacs edit mode",
-				Func: func(c *promptx.CommandContext) {
-					log.Println("use emacs mode now!")
-					return
-				},
-			},
-		},
-		Func: func(c *promptx.CommandContext) {
-			log.Println("current is emacs mode")
-		},
-	},
-	&promptx.Cmd{
-		Name: "login",
-		Help: "登陆游戏",
-		Func: func(c *promptx.CommandContext) {
-			c.Select("选择登陆的服务器", []string{
-				"开发服",
-				"测试服",
-				"体验服",
-			})
-			c.Println("xxx -  x")
-			c.Select("xxxxx服务器", []string{
-				"开发服x2",
-				"测试服x2",
-				"体验服x2",
-			})
-
-			fmt.Println("登陆成功")
-			return
-		},
-		SubCommands: []*promptx.Cmd{
-			&promptx.Cmd{
-				Name: "hello",
-				Help: "say hello",
-			},
-			&promptx.Cmd{
-				Name: "xxx",
-				Help: "xxx xxx",
-			},
-		},
-	},
-	&promptx.Cmd{
-		Name: "login2",
-		Help: "测试相似命令(test similar command)",
-		Func: func(c *promptx.CommandContext) {
-			c.Select(
-				"选择登陆的服务器",
-				[]string{
-					"开发服",
-					"测试服",
-					"体验服",
-				},
-				promptx.WithSelectOptionShowHelpText(true),
-			)
-			c.Select(
-				"选择登陆的xxxx服务器",
-				[]string{
-					"开发服x",
-					"测试服x",
-					"体验服x",
-				},
-				promptx.WithSelectOptionShowHelpText(true),
-			)
-
-			fmt.Println("登陆成功")
-			c.WPrint(&promptx.AskWord, promptx.WordRed(" Red "),
-				promptx.WordCyan(" Cyan "),
-				promptx.WordBlue(" Blue "),
-				promptx.WordGreen(" Green "),
-				promptx.WordPurple(" Purple "),
-				promptx.WordTurquoise(" Turquoise "),
-				promptx.WordWhite(" White "),
-				promptx.WordYellow(" Yellow "),
-				&promptx.NewLineWord,
-			)
-			return
-		},
-	},
-	&promptx.Cmd{
-		Name: "say",
-		Help: "say some words",
-		SubCommands: []*promptx.Cmd{
-			&promptx.Cmd{
-				Name:       "files",
-				Help:       "select files for operetion",
-				DynamicCmd: listFiles("./"),
-				SubCommands: []*promptx.Cmd{
-					&promptx.Cmd{
-						Name: "with",
-						Help: "with command",
-						SubCommands: []*promptx.Cmd{
-							&promptx.Cmd{
-								Name: "following",
-								Help: "ssss sub command",
-							},
-							&promptx.Cmd{
-								Name: "items",
-								Help: "items command tip",
-							},
-						},
-					},
-				},
-			},
-			&promptx.Cmd{
-				Name: "hello",
-				Help: "say hello",
-			},
-			&promptx.Cmd{
-				Name: "bye",
-				Help: "bye bye",
-			},
-		},
-	},
-	&promptx.Cmd{
-		Name: "setprompt",
-		Help: "set prompt string",
-		Func: func(c *promptx.CommandContext) {
-			prompt := ""
-			if len(c.Args) > 0 {
-				prompt = c.Args[0]
-			} else {
-				var eof error
-				prompt, eof = c.Input("input prompt")
-				if eof != nil {
-					return
-				}
-			}
-			c.SetPrompt(prompt)
-		},
-	},
-	&promptx.Cmd{
-		Name: "prompt",
-		Help: "update prompt words",
-		Func: func(c *promptx.CommandContext) {
-			prompt := ""
-			c.Println(c.Args)
-			if len(c.Args) > 0 {
-				prompt = c.Args[0]
-			} else {
-				var eof error
-				prompt, eof = c.Input("input prompt")
-				if eof != nil {
-					return
-				}
-			}
-			c.Println("---", prompt)
-
-			c.SetPromptWords(&promptx.AskWord, &promptx.Word{
-				Text:      prompt + " ",
-				TextColor: promptx.Red,
-			})
-			// NOTE: refresh
-			c.Println("xxx")
-			c.Println("xxx wait 5 second")
-			time.Sleep(time.Second * 5)
-			c.Println("fiish")
-		},
-	},
-	&promptx.Cmd{
-		Name:    "setpassword",
-		Aliases: []string{"password"},
-		Help:    "modify password",
-	},
-	&promptx.Cmd{
-		Name: "bye",
-		Help: "exit bye bye",
-	},
-	&promptx.Cmd{
-		Name: "ls",
-		Help: "ls linux command",
-		Func: func(c *promptx.CommandContext) {
-			c.ExitRawMode()
-			cmd := exec.Command("ls", "-alh")
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Run()
-			c.EnterRawMode()
-		},
-	},
-	&promptx.Cmd{
-		Name: "bash",
-		Help: "enter linux bash",
-		Func: func(c *promptx.CommandContext) {
-			err := c.ExitRawMode()
-			c.Println("exit rawmode:", err)
-			cmd := exec.Command("bash")
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			err = cmd.Run()
-			c.Println("run result:", err)
-			c.EnterRawMode()
-		},
-	},
-	&promptx.Cmd{
-		Name: "help",
-		Help: "print help info",
-		Func: func(c *promptx.CommandContext) {
-			input, err := c.Input("input limit: ",
-				promptx.WithInputOptionTipText("tip tip tip"),
-				promptx.WithInputOptionValidFunc(func(d *promptx.Document) error {
-					_, err := strconv.Atoi(d.Text)
-					return err
-				}),
-			)
-			if err != nil {
-				return
-			}
-			limit, _ := strconv.Atoi(input)
-			go func() {
-				v := 0
-				for {
-					select {
-					case <-time.After(time.Second):
-						v++
-						fmt.Fprintln(c.Stdout(), "xx---async", v)
-						if v >= limit {
-							return
-						}
-					}
-				}
-			}()
-			log.Println("start async print")
-		},
-	},
-	&promptx.Cmd{
-		Name: "go",
-		Help: "run go command",
-		SubCommands: []*promptx.Cmd{
-			&promptx.Cmd{
-				Name: "build",
-				Help: "go command",
-				NewFlags: func(set *pflag.FlagSet) interface{} {
-					set.BoolP("xxxx", "x", false, "test xxxxx")
-					flag.String("o", "", "输出文件名")
-					o := flag.Lookup("o")
-					set.AddGoFlag(o)
-					set.StringP("tip", "t", "", "tip tip tip")
-					set.IntP("ssss", "v", 0, "fffffff - int")
-					return nil
-				},
-			},
-			&promptx.Cmd{
-				Name: "install",
-				Help: "go command",
-			},
-			&promptx.Cmd{
-				Name: "test",
-				Help: "go command",
-			},
-		},
-	},
-	&promptx.Cmd{
-		Name: "sleep",
-		Help: "sleep some second",
-		Func: func(c *promptx.CommandContext) {
-			result, err := c.Input("input some second:", promptx.WithInputOptionValidFunc(
-				func(d *promptx.Document) error {
-					_, err := strconv.Atoi(d.Text)
-					return err
-				},
-			))
-			if err != nil {
-				fmt.Fprint(c.Stdout(), "user cancel!")
-				return
-			}
-			sec, _ := strconv.Atoi(result)
-			if sec > 5 {
-				sec = 5
-			}
-			log.Println(c.Args)
-			log.Println("wait for ", time.Duration(sec)*time.Second)
-			time.Sleep(time.Second * time.Duration(sec))
-			log.Println("finish")
-			return
-		},
-	},
+	colorCommand(),
+	loginCommand(),
+	login2Command(),
+	editCommand(),
+	sayCommand(),
+	promptCommand(),
+	lsCommand(),
+	bashCommand(),
+	sleepCommand(),
+	asyncPrintCommand(),
+	panicCommand(),
+	// dynamicTipCommand(),
 }
 
 func main() {
 	// new promptx
-	p := promptx.NewPromptx(
-		promptx.WithCommonOpions(
-			// install commands
-			promptx.WithCommonOptionCommands(cmds...),
-			// promptx.WithCommonOptionTipText("tip tip tip"),
-			promptx.WithCommonOptionHistory(".history"),
-		),
-	)
+	p := promptx.NewCommandPromptx(cmds...)
 	// set log writer
 	log.SetOutput(p.Stdout())
 
-	p.ExecCommand([]string{"mode"})
+	p.ExecCommand([]string{"edit", "vi"})
 
 	p.Input("input xx:")
 	p.Select("select xx:", []string{

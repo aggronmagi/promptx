@@ -6,8 +6,8 @@ import (
 )
 
 // InputOptionsOptionDeclareWithDefault promptx options
-// generate by https://github.com/timestee/optiongen
-//go:generate optionGen --option_with_struct_name=true --v=true
+// generate by https://github.com/aggronmagi/gogen/
+//go:generate gogen option -n SelectOption -f -o gen_options_select.go
 func SelectOptionsOptionDeclareWithDefault() interface{} {
 	return map[string]interface{}{
 		"Options":    []*Suggest(nil),

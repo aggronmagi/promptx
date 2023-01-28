@@ -7,6 +7,34 @@ import (
 )
 
 // BlocksEmacsBuffer emacs operate like input ctx.GetBuffer()fer
+//
+// Moving the cursor
+// -----------------
+// | ok  | key       | description                                                  |
+// |-----+-----------+--------------------------------------------------------------|
+// | [x] | Ctrl + a  | Go to the beginning of the line (Home)                       |
+// | [x] | Ctrl + e  | Go to the End of the line (End)                              |
+// | [x] | Ctrl + p  | Previous command (Up arrow)                                  |
+// | [x] | Ctrl + n  | Next command (Down arrow)                                    |
+// | [x] | Ctrl + f  | Forward one character                                        |
+// | [x] | Ctrl + b  | Backward one character                                       |
+// | [x] | Meta + B  |                                                              |
+// | [x] | Meta + F  |                                                              |
+
+// Editing
+// -------
+// | ok  | key      | description                                             |
+// |-----+----------+---------------------------------------------------------|
+// | [x] | Ctrl + L | Clear the Screen, similar to the clear command          |
+// | [x] | Ctrl + d | Delete character under the cursor                       |
+// | [x] | Ctrl + h | Delete character before the cursor (Backspace)          |
+// | [x] | Ctrl + w | Cut the Word before the cursor to the clipboard.        |
+// | [x] | Ctrl + k | Cut the Line after the cursor to the clipboard.         |
+// | [x] | Ctrl + u | Cut/delete the Line before the cursor to the clipboard. |
+// | [ ] | Ctrl + t | Swap the last two characters before the cursor (typo).  |
+// | [ ] | Esc  + t | Swap the last two words before the cursor.              |
+// | [ ] | ctrl + y | Paste the last thing to be cut (yank)                   |
+// | [ ] | ctrl + _ | Undo                                                    |
 type BlocksEmacsBuffer struct {
 	EmptyBlocks
 	buf *Buffer

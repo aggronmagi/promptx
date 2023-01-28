@@ -72,6 +72,39 @@ func TestHistoryRebuild(t *testing.T) {
 	if !reflect.DeepEqual(expected, h) {
 		t.Errorf("Should be %#v, but got %#v", expected, h)
 	}
+
+	h.Add("fob")
+	expected = &History{
+		histories: []string{"foo", "fob", "fxb"},
+		cache: map[string]int{
+			"foo": 1,
+			"fob": 2,
+			"fxb": 1,
+		},
+		tmp:      []string{"foo", "fob", "fxb", ""},
+		selected: 3,
+		buf:      "",
+	}
+	if !reflect.DeepEqual(expected, h) {
+		t.Errorf("Should be %#v, but got %#v", expected, h)
+	}
+	// t.Logf("before - %#v\n", h)
+	h.Remove("foo")
+
+	expected = &History{
+		histories: []string{"fob", "fxb"},
+		cache: map[string]int{
+			"fob": 2,
+			"fxb": 1,
+		},
+		tmp:      []string{"fob", "fxb", ""},
+		selected: 2,
+		buf:      "",
+	}
+	if !reflect.DeepEqual(expected, h) {
+		t.Errorf("Should be %#v, but got %#v", expected, h)
+	}
+	t.Logf("after  - %#v\n", h)
 }
 
 func TestHistoryOlder(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 )
 
 // InputOptionsOptionDeclareWithDefault promptx options
-// generate by https://github.com/timestee/optiongen
-//go:generate optionGen --option_with_struct_name=true --v=true
+// generate by https://github.com/aggronmagi/gogen/
+//go:generate gogen option -n InputOption -f -o gen_options_input.go
 func InputOptionsOptionDeclareWithDefault() interface{} {
 	return map[string]interface{}{
 		"TipText":         "",
@@ -23,7 +23,7 @@ func InputOptionsOptionDeclareWithDefault() interface{} {
 		"FinishFunc":      (func(input string, eof error))(nil),
 		"FinishKey":       Key(Enter),
 		"CancelKey":       Key(ControlC),
-		// cresult display
+		// result display
 		"ResultText":      InputFinishTextFunc(defaultInputFinishText),
 		"ResultTextColor": Color(Blue),
 		"ResultBGColor":   Color(DefaultColor),
