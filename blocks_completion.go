@@ -9,10 +9,10 @@ import (
 // Completer should return the suggest item from Document.
 type Completer func(in Document) []*Suggest
 
-// CompleteOptionsOptionDeclareWithDefault promptx options
+// CompleteOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 //go:generate gogen option -n CompleteOption -f -o gen_options_complete.go
-func CompleteOptionsOptionDeclareWithDefault() interface{} {
+func promptxCompleteOptions() interface{} {
 	return map[string]interface{}{
 		"SuggestionTextColor":          Color(White),
 		"SuggestionBGColor":            Color(Cyan),

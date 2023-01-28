@@ -4,9 +4,9 @@
 
 package promptx
 
-var _ = SelectOptionsOptionDeclareWithDefault()
+var _ = promptxSelectOptions()
 
-// InputOptionsOptionDeclareWithDefault promptx options
+// InputOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 type SelectOptions struct {
 	Options    []*Suggest

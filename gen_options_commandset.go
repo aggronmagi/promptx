@@ -13,13 +13,13 @@ type CommandSetOptions struct {
 	Name string
 	// command set commands
 	Commands []*Cmd
-	// HistoryFile
+	// Set the operation record of the current command set to persist the saved file. If not set, the history operation record will be cleared every time the command set is switched.
 	HistoryFile string
-	// PreCheck check before exec command
+	// Set the pre-detection function for all commands executed in the current command set
 	PreCheck func(ctx Context) error
-	// PromptWords set mode prompt words
+	// Set the prompt string when switching to the command set(custom word color)
 	PromptWords []*Word
-	// ChangeNotify notify changed to this mode
+	// Set the notification function when switching to the command set, args is the parameter passed by SwitchCommandSet.
 	ChangeNotify func(ctx Context, args []interface{})
 }
 
@@ -41,7 +41,7 @@ func withCommandSetOptionCommands(v ...*Cmd) CommandSetOption {
 	}
 }
 
-// HistoryFile
+// Set the operation record of the current command set to persist the saved file. If not set, the history operation record will be cleared every time the command set is switched.
 func WithCommandSetOptionHistoryFile(v string) CommandSetOption {
 	return func(cc *CommandSetOptions) CommandSetOption {
 		previous := cc.HistoryFile
@@ -50,7 +50,7 @@ func WithCommandSetOptionHistoryFile(v string) CommandSetOption {
 	}
 }
 
-// PreCheck check before exec command
+// Set the pre-detection function for all commands executed in the current command set
 func WithCommandSetOptionPreCheck(v func(ctx Context) error) CommandSetOption {
 	return func(cc *CommandSetOptions) CommandSetOption {
 		previous := cc.PreCheck
@@ -59,7 +59,7 @@ func WithCommandSetOptionPreCheck(v func(ctx Context) error) CommandSetOption {
 	}
 }
 
-// PromptWords set mode prompt words
+// Set the prompt string when switching to the command set(custom word color)
 func WithCommandSetOptionPromptWords(v ...*Word) CommandSetOption {
 	return func(cc *CommandSetOptions) CommandSetOption {
 		previous := cc.PromptWords
@@ -68,7 +68,7 @@ func WithCommandSetOptionPromptWords(v ...*Word) CommandSetOption {
 	}
 }
 
-// ChangeNotify notify changed to this mode
+// Set the notification function when switching to the command set, args is the parameter passed by SwitchCommandSet.
 func WithCommandSetOptionChangeNotify(v func(ctx Context, args []interface{})) CommandSetOption {
 	return func(cc *CommandSetOptions) CommandSetOption {
 		previous := cc.ChangeNotify

@@ -4,9 +4,9 @@
 
 package promptx
 
-var _ = CompleteOptionsOptionDeclareWithDefault()
+var _ = promptxCompleteOptions()
 
-// CompleteOptionsOptionDeclareWithDefault promptx options
+// CompleteOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 type CompleteOptions struct {
 	SuggestionTextColor          Color

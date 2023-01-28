@@ -4,9 +4,9 @@
 
 package promptx
 
-var _ = InputOptionsOptionDeclareWithDefault()
+var _ = promptxInputOptions()
 
-// InputOptionsOptionDeclareWithDefault promptx options
+// InputOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 type InputOptions struct {
 	TipText         string

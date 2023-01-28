@@ -9,9 +9,9 @@ import (
 	output "github.com/aggronmagi/promptx/output"
 )
 
-var _ = PromptOptionsOptionDeclareWithDefault()
+var _ = promptxPromptOptions()
 
-// PromptOptionsOptionDeclareWithDefault promptx options
+// PromptOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 type PromptOptions struct {
 	// default global input options

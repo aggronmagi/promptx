@@ -4,9 +4,9 @@
 
 package promptx
 
-var _ = CommonOptionsOptionDeclareWithDefault()
+var _ = promptxCommonOptions()
 
-// CommonOptionsOptionDeclareWithDefault promptx options
+// CommonOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 type CommonOptions struct {
 	TipText         string
@@ -30,7 +30,7 @@ type CommonOptions struct {
 	AlwaysCheckCommand bool
 	// history file
 	History string
-	// PreCheck check before exec Cmd. only use for promptx.Cmd.
+	// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
 	CommandPreCheck func(ctx Context) error
 }
 
@@ -157,7 +157,7 @@ func WithCommonOptionHistory(v string) CommonOption {
 	}
 }
 
-// PreCheck check before exec Cmd. only use for promptx.Cmd.
+// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
 func WithCommonOptionCommandPreCheck(v func(ctx Context) error) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.CommandPreCheck

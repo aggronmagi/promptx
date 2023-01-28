@@ -10,10 +10,10 @@ import (
 	"github.com/aggronmagi/promptx/terminal"
 )
 
-// PromptOptionsOptionDeclareWithDefault promptx options
+// PromptOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 //go:generate gogen option -n PromptOption -o gen_options_prompt.go
-func PromptOptionsOptionDeclareWithDefault() interface{} {
+func promptxPromptOptions() interface{} {
 	return map[string]interface{}{
 		// default global input options
 		"InputOptions": []InputOption(nil),

@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-// InputOptionsOptionDeclareWithDefault promptx options
+// InputOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 //go:generate gogen option -n SelectOption -f -o gen_options_select.go
-func SelectOptionsOptionDeclareWithDefault() interface{} {
+func promptxSelectOptions() interface{} {
 	return map[string]interface{}{
 		"Options":    []*Suggest(nil),
 		"RowsLimit":  int(5),

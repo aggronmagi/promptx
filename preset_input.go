@@ -6,10 +6,10 @@ import (
 	"github.com/aggronmagi/promptx/internal/debug"
 )
 
-// InputOptionsOptionDeclareWithDefault promptx options
+// InputOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 //go:generate gogen option -n InputOption -f -o gen_options_input.go
-func InputOptionsOptionDeclareWithDefault() interface{} {
+func promptxInputOptions() interface{} {
 	return map[string]interface{}{
 		"TipText":         "",
 		"TipTextColor":    Color(Yellow),
