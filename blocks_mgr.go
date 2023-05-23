@@ -481,3 +481,4 @@ func (m *BlocksBaseManager) PrepareArea(lines int) {
 		m.out.ScrollUp()
 	}
 }
+

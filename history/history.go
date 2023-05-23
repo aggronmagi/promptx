@@ -50,7 +50,7 @@ func (h *History) Remove(input string) {
 				break
 			}
 		}
-	}else {
+	} else {
 		h.cache[input] -= 1
 	}
 	h.Rebuild("", true)

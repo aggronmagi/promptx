@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"strings"
+	"unicode"
 
 	"github.com/aggronmagi/promptx/internal/debug"
 )
@@ -41,6 +42,14 @@ func (b *Buffer) DisplayCursorPosition() int {
 
 // InsertText insert string from current line.
 func (b *Buffer) InsertText(v string, overwrite bool, moveCursor bool) {
+	rv := []rune(v)
+	nv := make([]rune, 0, len(rv))
+	for _, rc := range rv {
+		if unicode.IsPrint(rc) {
+			nv = append(nv, rc)
+		}
+	}
+	v = string(nv)
 	or := []rune(b.Text())
 	oc := b.cursorPosition
 
@@ -183,7 +192,7 @@ func (b *Buffer) Reset() {
 	b.workingLines = []string{""}
 	b.preferredColumn = -1
 	b.cacheDocument = nil
-	b.cursorPosition = 0 
+	b.cursorPosition = 0
 }
 
 // NewBuffer is constructor of Buffer struct.

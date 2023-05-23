@@ -12,6 +12,7 @@ import (
 
 // PromptOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
+//
 //go:generate gogen option -n PromptOption -o gen_options_prompt.go
 func promptxPromptOptions() interface{} {
 	return map[string]interface{}{
@@ -33,6 +34,7 @@ func promptxPromptOptions() interface{} {
 
 // CommandSetOptions command set options
 // generate by https://github.com/aggronmagi/gogen/
+//
 //go:generate gogen option -n CommandSetOption -f -o gen_options_commandset.go
 func promptxCommandSetOptions() interface{} {
 	return map[string]interface{}{
@@ -123,6 +125,12 @@ type Context interface {
 	WPrintln(words ...*Word)
 }
 
+type PromptMain interface {
+	Context
+	Run() error
+	ExecCommand(args []string)
+}
+
 // Promptx prompt command line
 type Promptx struct {
 	// config options
@@ -141,13 +149,13 @@ type Promptx struct {
 var _ Context = &Promptx{}
 
 // NewPromptx new prompt
-func NewPromptx(opts ...PromptOption) Context {
+func NewPromptx(opts ...PromptOption) PromptMain {
 	cc := NewPromptOptions(opts...)
 	return newPromptx(cc)
 }
 
 // NewCommandPromptx new with command
-func NewCommandPromptx(cmds ...*Cmd) Context {
+func NewCommandPromptx(cmds ...*Cmd) PromptMain {
 	return NewPromptx(
 		WithCommonOpions(
 			WithCommonOptionCommands(cmds...),
@@ -158,7 +166,7 @@ func NewCommandPromptx(cmds ...*Cmd) Context {
 // NewOptionCommandPromptx new with command and options
 // use for replace NewCommandPromptx when you need apply other options.
 // example: NewCommandPromptx(cmds...) => NewOptionCommandPromptx(NewPromptOptions(....),cmds...)
-func NewOptionCommandPromptx(cc *PromptOptions, cmds ...*Cmd) Context {
+func NewOptionCommandPromptx(cc *PromptOptions, cmds ...*Cmd) PromptMain {
 	if cc == nil {
 		cc = NewPromptOptions()
 	}

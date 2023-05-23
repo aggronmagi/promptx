@@ -11,6 +11,7 @@ import (
 
 // CommonOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
+//
 //go:generate gogen option -n CommonOption -f -o gen_options_common.go
 func promptxCommonOptions() interface{} {
 	return map[string]interface{}{
