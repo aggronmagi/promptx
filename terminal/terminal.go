@@ -77,6 +77,7 @@ func (t *TerminalApp) Run(app App) {
 	debug.Println("retry raw")
 	// try recover raw mode
 	t.EnterRaw()
+	defer t.ExitRaw()
 	debug.Println("ready store app")
 	t.appPtr.Store(unsafe.Pointer(&app))
 	t.m.Lock()
