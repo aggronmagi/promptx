@@ -7,6 +7,7 @@ import (
 
 // InputOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
+//
 //go:generate gogen option -n SelectOption -f -o gen_options_select.go
 func promptxSelectOptions() interface{} {
 	return map[string]interface{}{
@@ -218,4 +219,13 @@ func (m *SelectBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 		m.PreWords.Words = m.cc.FinishText(m.cc, m.Select.GetSelects())
 	}
 	return
+}
+
+// TearDown to clear title and erasing.
+func (m *SelectBlockManager) TearDown() {
+	//m.BlocksBaseManager.Render(NormalStatus)
+	m.BlocksBaseManager.TearDown()
+	m.BlocksBaseManager.out.ShowCursor()
+	m.out.Flush()
+
 }

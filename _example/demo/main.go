@@ -212,11 +212,15 @@ func main() {
 	p.ExecCommand([]string{"edit", "vi"})
 
 	p.Input("input xx:")
-	p.Select("select xx:", []string{
+	sel := p.Select("select xx:", []string{
 		"x1",
 		"x2",
-		"x3",
+		"exit",
 	})
+
+	if sel == 2 {
+		return
+	}
 
 	p.Run()
 }
