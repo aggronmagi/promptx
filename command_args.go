@@ -29,19 +29,28 @@ func InputNotEmpty() InputChecker {
 	}
 }
 
+// InputNotEmptyAndSpace Detection input must be a non-empty string,can't contain space.
+func InputNotEmptyAndSpace() InputChecker {
+	return func(d *Document) (err error) {
+		if d.Text == "" {
+			return errors.New("empty input")
+		}
+		if strings.ContainsAny(d.Text, " \n\t") {
+			return errors.New("contain invalid char(space,enter,tab)")
+		}
+		return
+	}
+}
+
 // InputInteger The detection input must be a non-zero value
 func InputInteger() InputChecker {
 	return func(d *Document) error {
 		if d.Text == "" {
 			return errors.New("empty input")
 		}
-		v, err := strconv.ParseInt(d.Text, 10, 64)
+		_, err := strconv.ParseInt(d.Text, 10, 64)
 		if err != nil {
 			return err
-		}
-
-		if v == 0 {
-			return errors.New("zero value invalid")
 		}
 
 		return nil

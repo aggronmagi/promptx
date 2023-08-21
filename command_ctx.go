@@ -9,8 +9,8 @@ import (
 	"github.com/aggronmagi/promptx/internal/debug"
 )
 
-// CommandContext command context 
-// 
+// CommandContext command context
+//
 // The command execution function uses the ~Check...~ method provided by ~CommandContext~ to
 // get the parameters.
 // All Check methods, if there is no input from the user, interrupt the process through panic.
@@ -32,6 +32,10 @@ type CommandContext interface {
 	CheckIPPort(index int) (ip, port string)
 	CheckAddrs(index int) (addrs []string)
 	CheckSelectIndex(index int) int
+
+	ArgSelect(index int, tip string, list []string, opts ...SelectOption) int
+	ArgInput(index int, tip string, opts ...InputOption) (result string, eof error) 
+	GetArgs() []string
 }
 
 // CmdContext run context
@@ -76,6 +80,10 @@ func (ctx *CmdContext) execCommand() {
 		}
 	}()
 	ctx.Cur.execFunc(ctx)
+}
+
+func (ctx *CmdContext) GetArgs() []string {
+	return ctx.Args
 }
 
 func (ctx *CmdContext) CheckString(index int) string {
@@ -141,6 +149,26 @@ func (ctx *CmdContext) CheckSelectIndex(index int) int {
 		}
 	}
 	panic(fmt.Sprintf("index:%d not select options. %s not in %v", index, ctx.Args[index], iface.SelectOptions()))
+}
+
+func (ctx *CmdContext) ArgSelect(index int, tip string, list []string, opts ...SelectOption) int {
+	if index >= len(ctx.Args) {
+		return ctx.Select(tip, list, opts...)
+	}
+	sel := ctx.Args[index]
+	for k, v := range list {
+		if v == sel {
+			return k
+		}
+	}
+	return ctx.Select(tip, list, opts...)
+}
+
+func (ctx *CmdContext) ArgInput(index int, tip string, opts ...InputOption) (result string, eof error) {
+	if index >= len(ctx.Args) {
+		return ctx.Input(tip, opts...)
+	}
+	return ctx.Args[index], nil
 }
 
 func (ctx *CmdContext) fixHisotry() {

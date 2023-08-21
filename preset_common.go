@@ -132,12 +132,14 @@ func (m *CommonBlockManager) applyOptionModify() {
 		m.Tip.Words = append(m.Tip.Words, &NewLineWord)
 	}
 
-	m.PreWords.Words = append(m.PreWords.Words, &Word{
-		Text:      cc.PrefixText,
-		TextColor: cc.PrefixTextColor,
-		BGColor:   cc.PrefixBGColor,
-		Bold:      false,
-	})
+	if len(m.PreWords.Words) == 0 {
+		m.PreWords.Words = append(m.PreWords.Words, &Word{
+			Text:      cc.PrefixText,
+			TextColor: cc.PrefixTextColor,
+			BGColor:   cc.PrefixBGColor,
+			Bold:      false,
+		})
+	}
 
 	m.Validate.TextColor = cc.ValidTextColor
 	m.Validate.BGColor = cc.ValidBGColor
