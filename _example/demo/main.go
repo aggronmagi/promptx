@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/aggronmagi/promptx"
@@ -204,6 +205,19 @@ var cmds = []*promptx.Cmd{
 }
 
 func main() {
+	fmt.Printf("[%s]\n", strings.Trim(fmt.Sprint([]float32(nil)), "[]"))
+	fmt.Printf("[%s]\n", strings.Trim(fmt.Sprint([]float32{1, 2}), "[]"))
+	fmt.Printf("[%s]\n", fmt.Sprint(nil))
+	tf := func(v any) string {
+		in := fmt.Sprint(v)
+		in = strings.TrimLeft(strings.TrimRight(in, "]"), "[")
+		in = strings.TrimLeft(strings.TrimRight(in, ">"), "<")
+		in = strings.Trim(strings.TrimSpace(in), "nil")
+		return in
+	}
+	fmt.Printf("[%s]\n", tf(nil))
+	fmt.Printf("[%s]\n", tf([]float32{}))
+	fmt.Printf("[%s]\n", tf([]string(nil)))
 	// new promptx
 	p := promptx.NewCommandPromptx(cmds...)
 	// set log writer
@@ -211,12 +225,13 @@ func main() {
 
 	p.ExecCommand([]string{"edit", "vi"})
 
-	p.Input("input xx:")
+	input, eof := p.Input("input xx:", promptx.InputNotEmpty())
+	fmt.Println(input, eof)
 	sel := p.Select("select xx:", []string{
 		"x1",
 		"x2",
 		"exit",
-	})
+	}, 1)
 
 	if sel == 2 {
 		return

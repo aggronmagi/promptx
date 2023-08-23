@@ -33,8 +33,9 @@ type CommandContext interface {
 	CheckAddrs(index int) (addrs []string)
 	CheckSelectIndex(index int) int
 
-	ArgSelect(index int, tip string, list []string, opts ...SelectOption) int
-	ArgInput(index int, tip string, opts ...InputOption) (result string, eof error) 
+	ArgSelect(index int, tip string, list []string, defaultSelect ...int) int
+	ArgSelectString(index int, tip string, list []string, defaultSelect ...int) string
+	ArgInput(index int, tip string, opts ...InputOption) (result string, eof error)
 	GetArgs() []string
 }
 
@@ -151,22 +152,42 @@ func (ctx *CmdContext) CheckSelectIndex(index int) int {
 	panic(fmt.Sprintf("index:%d not select options. %s not in %v", index, ctx.Args[index], iface.SelectOptions()))
 }
 
-func (ctx *CmdContext) ArgSelect(index int, tip string, list []string, opts ...SelectOption) int {
-	if index >= len(ctx.Args) {
-		return ctx.Select(tip, list, opts...)
-	}
-	sel := ctx.Args[index]
-	for k, v := range list {
-		if v == sel {
-			return k
+func (ctx *CmdContext) ArgSelect(index int, tip string, list []string, defaultSelect ...int) int {
+	if index > 0 && index < len(ctx.Args) {
+		sel := ctx.Args[index]
+		for k, v := range list {
+			if v == sel {
+				return k
+			}
 		}
 	}
-	return ctx.Select(tip, list, opts...)
+	id := ctx.Select(tip, list, defaultSelect...)
+	if id < 0 {
+		return id
+	}
+	// ctx.Args = append(ctx.Args, list[id])
+	return id
+}
+
+func (ctx *CmdContext) ArgSelectString(index int, tip string, list []string, defaultSelect ...int) string {
+	if index > 0 && index < len(ctx.Args) {
+		sel := ctx.Args[index]
+		for _, v := range list {
+			if v == sel {
+				return v
+			}
+		}
+	}
+	id := ctx.Select(tip, list, defaultSelect...)
+	if id < 0 {
+		return ""
+	}
+	return list[id]
 }
 
 func (ctx *CmdContext) ArgInput(index int, tip string, opts ...InputOption) (result string, eof error) {
 	if index >= len(ctx.Args) {
-		return ctx.Input(tip, opts...)
+		return ctx.RawInput(tip, opts...)
 	}
 	return ctx.Args[index], nil
 }

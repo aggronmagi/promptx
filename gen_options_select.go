@@ -45,6 +45,8 @@ type SelectOptions struct {
 	ResultShowItem  bool
 	ResultTextColor Color
 	ResultBGColor   Color
+	// default select
+	DefaultSelects []int
 }
 
 func WithSelectOptionOptions(v ...*Suggest) SelectOption {
@@ -270,6 +272,15 @@ func WithSelectOptionResultBGColor(v Color) SelectOption {
 	}
 }
 
+// default select
+func WithSelectOptionDefaultSelects(v ...int) SelectOption {
+	return func(cc *SelectOptions) SelectOption {
+		previous := cc.DefaultSelects
+		cc.DefaultSelects = v
+		return WithSelectOptionDefaultSelects(previous...)
+	}
+}
+
 // SetOption modify options
 func (cc *SelectOptions) SetOption(opt SelectOption) {
 	_ = opt(cc)
@@ -342,6 +353,7 @@ func newDefaultSelectOptions() *SelectOptions {
 		ResultShowItem:               true,
 		ResultTextColor:              Blue,
 		ResultBGColor:                DefaultColor,
+		DefaultSelects:               nil,
 	}
 	return cc
 }

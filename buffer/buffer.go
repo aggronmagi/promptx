@@ -45,7 +45,7 @@ func (b *Buffer) InsertText(v string, overwrite bool, moveCursor bool) {
 	rv := []rune(v)
 	nv := make([]rune, 0, len(rv))
 	for _, rc := range rv {
-		if unicode.IsPrint(rc) {
+		if unicode.IsPrint(rc) || rc == '\n' {
 			nv = append(nv, rc)
 		}
 	}

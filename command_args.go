@@ -138,6 +138,67 @@ func InputAddrsArray() InputChecker {
 	}
 }
 
+func InputFloat64() InputChecker {
+	return func(d *Document) error {
+		if d.Text == "" {
+			return errors.New("empty input")
+		}
+		_, err := strconv.ParseFloat(d.Text, 64)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func InputFloat64Slice() InputChecker {
+	return func(d *Document) error {
+		if d.Text == "" {
+			return errors.New("empty input")
+		}
+		for _, v := range strings.Split(d.Text, ",") {
+			_, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+
+func InputFloat32() InputChecker {
+	return func(d *Document) error {
+		if d.Text == "" {
+			return errors.New("empty input")
+		}
+		_, err := strconv.ParseFloat(d.Text, 32)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func InputFloat32Slice() InputChecker {
+	return func(d *Document) error {
+		if d.Text == "" {
+			return errors.New("empty input")
+		}
+		for _, v := range strings.Split(d.Text, ",") {
+			_, err := strconv.ParseFloat(v, 32)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
 type inputArgsChecker struct {
 	tip     string
 	opts    []InputOption
@@ -152,7 +213,7 @@ func (c *inputArgsChecker) Check(ctx *CmdContext, index int) (err error) {
 			cc := *ctx.InputCC
 			cc.ApplyOption(c.opts...)
 			cc.SetOption(WithInputOptionPrefixText(c.tip))
-			ctx.WPrintln(cc.ResultText(&cc, 1, &Document{Text: ctx.Args[index]})...)
+			ctx.WPrintln(cc.ResultText(&cc, 1, &Document{Text: ctx.Args[index]}, cc.DefaultText)...)
 			return nil
 		}
 		ctx.Printf("input %s [%s] %v", c.tip, ctx.Args[index], err)
@@ -162,7 +223,7 @@ func (c *inputArgsChecker) Check(ctx *CmdContext, index int) (err error) {
 	ctx.ChangeFlag = true
 	debug.Log("input change flag")
 	// 重新输入
-	ret, eof := ctx.Input(c.tip, c.opts...)
+	ret, eof := ctx.RawInput(c.tip, c.opts...)
 	if eof != nil {
 		return errors.New("user cancel")
 	}
@@ -231,7 +292,7 @@ func (c *selectArgsChecker) Check(ctx *CmdContext, index int) (err error) {
 	ctx.ChangeFlag = true
 	debug.Log("select change flag")
 	// 重新输入
-	sel := ctx.Select(c.tip, c.list, c.opts...)
+	sel := ctx.RawSelect(c.tip, c.list, c.opts...)
 	if sel < 0 {
 		return errors.New("user cancel")
 	}

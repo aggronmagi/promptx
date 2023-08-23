@@ -22,9 +22,12 @@ type InputOptions struct {
 	FinishKey       Key
 	CancelKey       Key
 	// result display
-	ResultText      InputFinishTextFunc
-	ResultTextColor Color
-	ResultBGColor   Color
+	ResultText         InputFinishTextFunc
+	ResultTextColor    Color
+	ResultBGColor      Color
+	DefaultText        string
+	DefaultTextColor   Color
+	DefaultTextBGColor Color
 }
 
 func WithInputOptionTipText(v string) InputOption {
@@ -134,6 +137,27 @@ func WithInputOptionResultBGColor(v Color) InputOption {
 		return WithInputOptionResultBGColor(previous)
 	}
 }
+func WithInputOptionDefaultText(v string) InputOption {
+	return func(cc *InputOptions) InputOption {
+		previous := cc.DefaultText
+		cc.DefaultText = v
+		return WithInputOptionDefaultText(previous)
+	}
+}
+func WithInputOptionDefaultTextColor(v Color) InputOption {
+	return func(cc *InputOptions) InputOption {
+		previous := cc.DefaultTextColor
+		cc.DefaultTextColor = v
+		return WithInputOptionDefaultTextColor(previous)
+	}
+}
+func WithInputOptionDefaultTextBGColor(v Color) InputOption {
+	return func(cc *InputOptions) InputOption {
+		previous := cc.DefaultTextBGColor
+		cc.DefaultTextBGColor = v
+		return WithInputOptionDefaultTextBGColor(previous)
+	}
+}
 
 // SetOption modify options
 func (cc *InputOptions) SetOption(opt InputOption) {
@@ -177,21 +201,24 @@ var watchDogInputOptions func(cc *InputOptions)
 // newDefaultInputOptions new option with default value
 func newDefaultInputOptions() *InputOptions {
 	cc := &InputOptions{
-		TipText:         "",
-		TipTextColor:    Yellow,
-		TipBGColor:      DefaultColor,
-		PrefixText:      ">> ",
-		PrefixTextColor: Green,
-		PrefixBGColor:   DefaultColor,
-		ValidFunc:       nil,
-		ValidTextColor:  Red,
-		ValidBGColor:    DefaultColor,
-		FinishFunc:      nil,
-		FinishKey:       Enter,
-		CancelKey:       ControlC,
-		ResultText:      defaultInputFinishText,
-		ResultTextColor: Blue,
-		ResultBGColor:   DefaultColor,
+		TipText:            "",
+		TipTextColor:       Yellow,
+		TipBGColor:         DefaultColor,
+		PrefixText:         ">> ",
+		PrefixTextColor:    Green,
+		PrefixBGColor:      DefaultColor,
+		ValidFunc:          nil,
+		ValidTextColor:     Red,
+		ValidBGColor:       DefaultColor,
+		FinishFunc:         nil,
+		FinishKey:          Enter,
+		CancelKey:          ControlC,
+		ResultText:         defaultInputFinishText,
+		ResultTextColor:    Blue,
+		ResultBGColor:      DefaultColor,
+		DefaultText:        "",
+		DefaultTextColor:   Brown,
+		DefaultTextBGColor: DefaultColor,
 	}
 	return cc
 }

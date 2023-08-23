@@ -47,6 +47,8 @@ func promptxSelectOptions() interface{} {
 		"ResultShowItem":  true,
 		"ResultTextColor": Color(Blue),
 		"ResultBGColor":   Color(DefaultColor),
+		// default select
+		"DefaultSelects": []int(nil),
 	}
 }
 
@@ -160,6 +162,26 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 
 	// plugin exit not exit
 	m.SetCancelKeyAutoExit(false)
+	// default select
+	for len(m.cc.DefaultSelects) > 0 {
+		validSels := make([]int, 0, len(m.cc.DefaultSelects))
+		for _, k := range m.cc.DefaultSelects {
+			if k < 0 || k >= len(m.cc.Options) {
+				continue
+			}
+			validSels = append(validSels, k)
+		}
+		m.cc.DefaultSelects = validSels
+		if len(validSels) < 1 {
+			break
+		}
+		if m.cc.Multi {
+			m.Select.selects = m.cc.DefaultSelects
+		} else {
+			m.Select.selected = m.cc.DefaultSelects[0]
+		}
+		break
+	}
 	return
 }
 

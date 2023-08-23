@@ -72,12 +72,6 @@ func init() {
 
 // Context Run Command Context
 type Context interface {
-	// Input get input string. if cancel return error io.EOF
-	Input(tip string, opts ...InputOption) (result string, eof error)
-	// Select select one from list. if cancel,return -1
-	Select(tip string, list []string, opts ...SelectOption) (sel int)
-	// MulSel like Select, but can choose list more then one. if cancel, return empty slice
-	MulSel(tip string, list []string, opts ...SelectOption) (sel []int)
 	// Stop stop run
 	Stop()
 	// EnterRawMode enter raw mode for read key press real time
@@ -123,6 +117,44 @@ type Context interface {
 	WPrint(words ...*Word)
 	// WPrintln print words and newline
 	WPrintln(words ...*Word)
+
+	RawInput(tip string, opts ...InputOption) (result string, err error)
+	Input(tip string, checker InputChecker, defaultValue ...string) (result string, err error)
+	MultInput(tip string, checker InputChecker) string
+	InputInt(tip string, val int, check ...func(in int) error) (_ int, eof error)
+	MustInputInt(tip string, val int, check ...func(in int) error) int
+	InputIntSlice(tip string, val []int, check ...func(in []int) error) (_ []int, eof error)
+	MustInputIntSlice(tip string, val []int, check ...func(in []int) error) []int
+	InputInt64(tip string, val int64, check ...func(in int64) error) (_ int64, eof error)
+	MustInputInt64(tip string, val int64, check ...func(in int64) error) int64
+	InputInt64Slice(tip string, val []int64, check ...func(in []int64) error) (_ []int64, eof error)
+	MustInputInt64Slice(tip string, val []int64, check ...func(in []int64) error) []int64
+	InputInt32(tip string, val int32, check ...func(in int32) error) (_ int32, eof error)
+	MustInputInt32(tip string, val int32, check ...func(in int32) error) int32
+	InputInt32Slice(tip string, val []int32, check ...func(in []int32) error) (_ []int32, eof error)
+	MustInputInt32Slice(tip string, val []int32, check ...func(in []int32) error) []int32
+	InputString(tip string, val string, check ...func(in string) error) (_ string, eof error)
+	MustInputString(tip string, val string, check ...func(in string) error) string
+	InputStringSlice(tip string, val []string, check ...func(in []string) error) (_ []string, eof error)
+	MustInputStringSlice(tip string, val []string, check ...func(in []string) error) []string
+	InputFloat32(tip string, val float32, check ...func(in float32) error) (_ float32, eof error)
+	MustInputFloat32(tip string, val float32, check ...func(in float32) error) float32
+	InputFloat32Slice(tip string, val []float32, check ...func(in []float32) error) (_ []float32, eof error)
+	MustInputFloat32Slice(tip string, val []float32, check ...func(in []float32) error) []float32
+	InputFloat64(tip string, val float64, check ...func(in float64) error) (_ float64, eof error)
+	MustInputFloat64(tip string, val float64, check ...func(in float64) error) float64
+	InputFloat64Slice(tip string, val []float64, check ...func(in []float64) error) (_ []float64, eof error)
+	MustInputFloat64Slice(tip string, val []float64, check ...func(in []float64) error) []float64
+	RawSelect(tip string, list []string, opts ...SelectOption) (result int)
+	Select(tip string, list []string, defaultSelect ...int) (result int)
+	MustSelect(tip string, list []string, defaultSelect ...int) (result int)
+	SelectString(tip string, list []string, defaultSelect ...int) (_ string, cancel bool)
+	MustSelectString(tip string, list []string, defaultSelect ...int) string
+	RawMulSel(tip string, list []string, opts ...SelectOption) (result []int)
+	MulSel(tip string, list []string, defaultSelects ...int) (result []int)
+	MustMulSel(tip string, list []string, defaultSelects ...int) (result []int)
+	MulSelString(tip string, list []string, defaultSelects ...int) (result []string)
+	MustMulSelString(tip string, list []string, defaultSelects ...int) (result []string)
 }
 
 type PromptMain interface {
@@ -388,101 +420,6 @@ func (p *Promptx) WPrintln(words ...*Word) {
 	}
 	out.SetColor(DefaultColor, DefaultColor, false)
 	out.WriteRawStr("\n")
-}
-
-// Input get input
-func (p *Promptx) Input(tip string, opts ...InputOption) (result string, err error) {
-	// copy a new config
-	newCC := (*p.inputCC)
-
-	// apply input opts
-	newCC.ApplyOption(opts...)
-	// set internal options
-	newCC.SetOption(WithInputOptionFinishFunc(func(input string, eof error) {
-		result, err = input, eof
-	}))
-	if tip != "" {
-		newCC.SetOption(WithInputOptionPrefixText(tip))
-	}
-	//
-	input := NewInputManager(&newCC)
-
-	input.SetExecContext(p)
-	input.SetWriter(p.cc.Output)
-	input.UpdateWinSize(p.cc.Input.GetWinSize())
-	debug.Println("enter input")
-	p.console.Run(input)
-	debug.Println("exit input")
-	return
-}
-
-// Select get input
-func (p *Promptx) Select(tip string, list []string, opts ...SelectOption) (result int) {
-	// copy new config
-	newCC := *p.selectCC
-	newCC.ApplyOption(opts...)
-	// reset options internal
-	newCC.SetOption(WithSelectOptionFinishFunc(
-		func(sels []int) {
-			if len(sels) < 1 {
-				result = -1
-				return
-			}
-			result = sels[0]
-		},
-	))
-	newCC.SetOption(WithSelectOptionMulti(false))
-	newCC.SetOption(WithSelectOptionTipText(tip))
-
-	// if opts set options. use opts values
-	if len(newCC.Options) < 1 {
-		if len(list) < 1 {
-			return -1
-		}
-		for _, v := range list {
-			newCC.Options = append(newCC.Options, &Suggest{
-				Text: v,
-			})
-		}
-	}
-	sel := NewSelectManager(&newCC)
-
-	sel.SetExecContext(p)
-	sel.SetWriter(p.cc.Output)
-	sel.UpdateWinSize(p.cc.Input.GetWinSize())
-	p.console.Run(sel)
-	return
-}
-
-// Select get input
-func (p *Promptx) MulSel(tip string, list []string, opts ...SelectOption) (result []int) {
-	// copy new config
-	newCC := *p.selectCC
-	newCC.ApplyOption(opts...)
-	newCC.SetOption(WithSelectOptionFinishFunc(
-		func(sels []int) {
-			result = sels
-		},
-	))
-	newCC.SetOption(WithSelectOptionMulti(true))
-
-	// if opts set options. use opts values
-	if len(newCC.Options) < 1 {
-		if len(list) < 1 {
-			return
-		}
-		for _, v := range list {
-			newCC.Options = append(newCC.Options, &Suggest{
-				Text: v,
-			})
-		}
-	}
-	sel := NewSelectManager(&newCC)
-	sel.SetExecContext(p)
-	sel.SetWriter(p.cc.Output)
-	sel.UpdateWinSize(p.cc.Input.GetWinSize())
-	p.console.Run(sel)
-	return
 }
 
 // getConsoleWriter use for custom command args checker
