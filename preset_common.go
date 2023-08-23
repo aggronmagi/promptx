@@ -355,7 +355,7 @@ func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (
 			m.history.Rebuild("", true)
 		}
 		// when exit,reset completion.
-		if key == ControlD && len(ctx.GetBuffer().Text()) == 0 {
+		if key == ControlD && len(ctx.GetBuffer().Text()) == 0 && m.Completion != nil && m.Completion.Completions != nil {
 			m.Completion.Completions.Reset()
 		}
 	}
