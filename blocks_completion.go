@@ -3,6 +3,7 @@ package promptx
 import (
 	completion "github.com/aggronmagi/promptx/completion"
 	"github.com/aggronmagi/promptx/internal/debug"
+	"github.com/aggronmagi/promptx/stack"
 	runewidth "github.com/mattn/go-runewidth"
 )
 
@@ -11,6 +12,7 @@ type Completer func(in Document) []*Suggest
 
 // CompleteOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
+//
 //go:generate gogen option -n CompleteOption -f -o gen_options_complete.go
 func promptxCompleteOptions() interface{} {
 	return map[string]interface{}{
@@ -45,14 +47,16 @@ type BlocksCompletion struct {
 }
 
 func (c *BlocksCompletion) ApplyOptions(opt ...CompleteOption) {
+	debug.Println("last:", c.Cfg.Completer != nil)
 	c.Cfg.ApplyOption(opt...)
+	debug.Println("new:", c.Cfg.Completer != nil)
 	if c.Cfg.Completer != nil {
 		c.Completions = completion.NewCompletionManager(c.Cfg.CompleteMax)
 		c.SetActive(true)
-		debug.Println("enable compeltion")
+		debug.Println("enable compeltion", stack.TakeStacktrace(1))
 	} else {
 		c.SetActive(false)
-		debug.Println("disable compeltion")
+		debug.Println("disable compeltion", stack.TakeStacktrace(1))
 	}
 }
 

@@ -277,6 +277,7 @@ func (p *Promptx) ExecCommand(args []string) {
 
 // ResetCommands 重置命令集合
 func (p *Promptx) ResetCommands(commands ...*Cmd) {
+	debug.Println("reset command ", len(commands))
 	if iface, ok := p.cc.BlocksManager.(interface {
 		ResetCommands(cmds ...*Cmd)
 	}); ok {

@@ -146,6 +146,7 @@ func (m *CommonBlockManager) applyOptionModify() {
 
 	m.SetCancelKey(cc.CancelKey)
 	m.SetFinishKey(cc.FinishKey)
+	debug.Println("applyOptionModify 1")
 	// completion
 	if m.Completion.Cfg == nil {
 		m.Completion.Cfg = NewCompleteOptions(cc.Completion...)
@@ -156,17 +157,22 @@ func (m *CommonBlockManager) applyOptionModify() {
 	} else {
 		m.Completion.ApplyOptions(cc.Completion...)
 	}
+	debug.Println("applyOptionModify 2")
 	// command
 	m.initCommand()
+
+	debug.Println("applyOptionModify 3")
 }
 
 func (m *CommonBlockManager) initCommand() {
 	cc := m.cc
 	if len(cc.Commands) < 1 {
+		debug.Println("revert Command")
 		// revert command
 		m.root = nil
 		return
 	}
+	debug.Println("initCommand")
 	m.root = &Cmd{}
 	m.root.SubCommands(cc.Commands...)
 	// replace completion
@@ -286,6 +292,7 @@ func (m *CommonBlockManager) SetPromptWords(words ...*Word) {
 
 // ResetCommands 重置命令集合
 func (m *CommonBlockManager) ResetCommands(cmds ...*Cmd) {
+	debug.Println("common.blocks reset commands", len(cmds))
 	m.ApplyOption(WithCommonOptionCommands(cmds...))
 }
 
