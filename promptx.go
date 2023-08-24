@@ -120,7 +120,7 @@ type Context interface {
 
 	RawInput(tip string, opts ...InputOption) (result string, err error)
 	Input(tip string, checker InputChecker, defaultValue ...string) (result string, err error)
-	MultInput(tip string, checker InputChecker) string
+	MustInput(tip string, checker InputChecker) string
 	InputInt(tip string, val int, check ...func(in int) error) (_ int, eof error)
 	MustInputInt(tip string, val int, check ...func(in int) error) int
 	InputIntSlice(tip string, val []int, check ...func(in []int) error) (_ []int, eof error)

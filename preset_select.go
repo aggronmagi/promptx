@@ -164,12 +164,20 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 	m.SetCancelKeyAutoExit(false)
 	// default select
 	for len(m.cc.DefaultSelects) > 0 {
-		validSels := make([]int, 0, len(m.cc.DefaultSelects))
-		for _, k := range m.cc.DefaultSelects {
-			if k < 0 || k >= len(m.cc.Options) {
-				continue
+		validSels := make([]int, 0, len(m.cc.Options))
+		// 只传递了-1,那么就全选
+		if len(m.cc.DefaultSelects) == 1 && m.cc.DefaultSelects[0] == -1 {
+			for k := 0; k < len(m.cc.Options); k++ {
+				validSels = append(validSels, k)
 			}
-			validSels = append(validSels, k)
+		} else {
+			// 传递多个参数. 检测有效性
+			for _, k := range m.cc.DefaultSelects {
+				if k < 0 || k >= len(m.cc.Options) {
+					continue
+				}
+				validSels = append(validSels, k)
+			}
 		}
 		m.cc.DefaultSelects = validSels
 		if len(validSels) < 1 {

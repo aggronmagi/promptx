@@ -43,7 +43,7 @@ func (p *Promptx) Input(tip string, checker InputChecker, defaultValue ...string
 }
 
 // Input get input
-func (p *Promptx) MultInput(tip string, checker InputChecker) string {
+func (p *Promptx) MustInput(tip string, checker InputChecker) string {
 	result, err := p.RawInput(tip, WithInputOptionValidFunc(checker))
 	if err != nil {
 		panic("user cancel")
