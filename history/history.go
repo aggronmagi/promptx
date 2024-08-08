@@ -2,7 +2,7 @@ package history
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/aggronmagi/promptx/internal/debug"
@@ -12,8 +12,6 @@ import (
 type History struct {
 	// all history
 	histories []string
-	// cache remove repetition history
-	cache map[string]int
 	// history suggestion
 	tmp      []string
 	selected int
@@ -26,10 +24,10 @@ func (h *History) Add(input string) {
 	if len(input) == 0 {
 		return
 	}
-	h.cache[input]++
-	if h.cache[input] == 1 {
+	if len(h.histories) < 1 || h.histories[len(h.histories)-1] != input {
 		h.histories = append(h.histories, input)
 	}
+	h.buf = ""
 	h.Rebuild("", true)
 }
 
@@ -38,33 +36,24 @@ func (h *History) Remove(input string) {
 	if len(input) == 0 {
 		return
 	}
-	n, ok := h.cache[input]
-	if !ok {
-		return
-	}
-	if n-1 < 1 {
-		delete(h.cache, input)
-		for k := range h.histories {
-			if h.histories[k] == input {
-				h.histories = append(h.histories[:k], h.histories[k+1:]...)
-				break
-			}
+	for k := range h.histories {
+		if h.histories[k] == input {
+			h.histories = append(h.histories[:k], h.histories[k+1:]...)
+			break
 		}
-	} else {
-		h.cache[input] -= 1
 	}
+	h.buf = ""
 	h.Rebuild("", true)
 }
 
+// rebulid tmp with buf prefix.
 func (h *History) Rebuild(buf string, force bool) {
 	buf = strings.TrimSpace(buf)
 	debug.Println("rebuild-buf", buf)
 	// add all history
 	if force || (len(buf) == 0 && len(h.tmp) != len(h.histories)+1) {
 		h.tmp = make([]string, len(h.histories)+1)
-		for i := range h.histories {
-			h.tmp[i] = h.histories[i]
-		}
+		copy(h.tmp, h.histories)
 
 		h.selected = len(h.tmp) - 1
 		h.buf = buf
@@ -74,18 +63,21 @@ func (h *History) Rebuild(buf string, force bool) {
 		return
 	}
 
-	h.tmp = make([]string, 0, len(h.histories)+1)
+	if cap(h.tmp) < len(h.histories)+1 {
+		h.tmp = make([]string, 0, len(h.histories)+1)
+	} else {
+		h.tmp = h.tmp[:0]
+	}
+
 	for _, v := range h.histories {
 		if strings.HasPrefix(v, buf) {
 			h.tmp = append(h.tmp, v)
 		}
 	}
-	// if not match any one histories,put all histories to tmp.
-	if len(h.tmp) < 1 {
-		for _, v := range h.histories {
-			h.tmp = append(h.tmp, v)
-		}
-	}
+	// // if not match any one histories,put all histories to tmp.
+	// if len(h.tmp) < 1 {
+	// 	h.tmp = append(h.tmp, h.histories...)
+	// }
 	h.tmp = append(h.tmp, "")
 	h.selected = len(h.tmp) - 1
 	h.buf = buf
@@ -125,25 +117,17 @@ func (h *History) Save(file string) (err error) {
 		buf.WriteString(v)
 		buf.WriteByte('\n')
 	}
-	err = ioutil.WriteFile(file, buf.Bytes(), 0644)
+	err = os.WriteFile(file, buf.Bytes(), 0644)
 	return
 }
 
 // Load read persistence data from file
 func (h *History) Load(file string) (err error) {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return
 	}
-	list := strings.Split(string(data), "\n")
-	h.histories = make([]string, 0, len(list))
-	for k, v := range list {
-		if len(v) < 1 {
-			continue
-		}
-		h.histories = append(h.histories, v)
-		h.cache[v] = len(list) - k
-	}
+	h.histories = strings.Split(string(data), "\n")
 	h.Rebuild("", true)
 	return
 }
@@ -157,7 +141,6 @@ func (h *History) Reset() {
 func NewHistory() *History {
 	return &History{
 		histories: make([]string, 0, 128),
-		cache:     make(map[string]int, 128),
 		tmp:       []string{""},
 		selected:  0,
 	}

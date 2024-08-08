@@ -76,7 +76,7 @@ func NewCommandWithFunc(name, help string, f func(ctx CommandContext), args ...C
 // ExecFunc Set command execution function
 //
 // see CommondContext for detail.
-func (c *Cmd) ExecFunc(f func(ctx CommandContext)) *Cmd {
+func (c *Cmd) ExecFunc(f func(c CommandContext)) *Cmd {
 	c.execFunc = f
 	return c
 }

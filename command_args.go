@@ -168,7 +168,6 @@ func InputFloat64Slice() InputChecker {
 	}
 }
 
-
 func InputFloat32() InputChecker {
 	return func(d *Document) error {
 		if d.Text == "" {
@@ -207,7 +206,9 @@ type inputArgsChecker struct {
 
 func (c *inputArgsChecker) Check(ctx *CmdContext, index int) (err error) {
 	if index < len(ctx.Args) {
-		err = c.checker(&Document{Text: ctx.Args[index]})
+		if c.checker != nil {
+			err = c.checker(&Document{Text: ctx.Args[index]})
+		}
 		if err == nil {
 			// 检测通过,打印参数
 			cc := *ctx.InputCC

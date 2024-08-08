@@ -189,6 +189,19 @@ func panicCommand() *promptx.Cmd {
 	})
 }
 
+func deepCommand() *promptx.Cmd {
+	return promptx.NewCommand("deep1", "deep command").SubCommands(
+		promptx.NewCommand("deep2-0", "deep2").SubCommands(
+			promptx.NewCommand("deep3", "deep2-1-3"),
+			promptx.NewCommand("deep3", "deep2-1-3"),
+		),
+		promptx.NewCommand("deep2-1", "deep2").SubCommands(
+			promptx.NewCommand("deep3", "deep2-1-3"),
+			promptx.NewCommand("deep3", "deep2-1-3"),
+		),
+	)
+}
+
 var cmds = []*promptx.Cmd{
 	colorCommand(),
 	loginCommand(),
@@ -201,6 +214,7 @@ var cmds = []*promptx.Cmd{
 	sleepCommand(),
 	asyncPrintCommand(),
 	panicCommand(),
+	deepCommand(),
 	// dynamicTipCommand(),
 }
 

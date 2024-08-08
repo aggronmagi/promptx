@@ -81,14 +81,15 @@ func (c *BlocksCompletion) InitBlocks() {
 	c.BindKey(c.refreshCompletion, NotDefined)
 	for _, v := range emacsKeyBindings {
 		c.BindKey(c.refreshCompletion, v.Key)
+		//c.BindKey(c.resetCompletion, v.Key)
 	}
 	for _, v := range commonKeyBindings {
 		c.BindKey(c.refreshCompletion, v.Key)
 	}
 	c.BindKey(func(ctx PressContext) (exit bool) {
-		if ctx.GetBuffer().Text() == "" {
-			c.Completions.Reset()
-		}
+		//if ctx.GetBuffer().Text() == "" {
+		c.Completions.Reset()
+		//}
 		return
 	}, Backspace)
 	c.init = true
