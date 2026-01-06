@@ -173,6 +173,8 @@ func (t *TerminalApp) readBuffer(bufCh chan []byte, stopCh chan struct{}) {
 		default:
 			if b, err := t.in.Read(); err == nil && !(len(b) == 1 && b[0] == 0) {
 				bufCh <- b
+			} else {
+				debug.Log("read error:" + err.Error())
 			}
 		}
 		time.Sleep(10 * time.Millisecond)

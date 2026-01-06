@@ -20,23 +20,22 @@ var procGetNumberOfConsoleInputEvents = kernel32.NewProc("GetNumberOfConsoleInpu
 
 // WindowsParser is a ConsoleParser implementation for Win32 console.
 type WindowsParser struct {
-	tty  *tty.TTY
-	exit func() error
+	tty *tty.TTY
 }
 
 // Setup should be called before starting input
 func (p *WindowsParser) Setup() error {
-	raw, err := p.tty.Raw()
+	t, err := tty.Open()
 	if err != nil {
 		return err
 	}
-	p.exit = raw
+	p.tty = t
 	return nil
 }
 
 // TearDown should be called after stopping input
 func (p *WindowsParser) TearDown() error {
-	return p.exit()
+	return p.tty.Close()
 }
 
 // Read returns byte array.
@@ -69,7 +68,16 @@ func (p *WindowsParser) Read() ([]byte, error) {
 
 // GetWinSize returns WinSize object to represent width and height of terminal.
 func (p *WindowsParser) GetWinSize() *WinSize {
-	w, h, err := p.tty.Size()
+	t := p.tty
+	if t == nil {
+		var err error
+		t, err = tty.Open()
+		if err != nil {
+			panic(err)
+		}
+		defer t.Close()
+	}
+	w, h, err := t.Size()
 	if err != nil {
 		panic(err)
 	}
@@ -81,11 +89,5 @@ func (p *WindowsParser) GetWinSize() *WinSize {
 
 // NewStandardInputParser returns ConsoleParser object to read from stdin.
 func NewStandardInputParser() *WindowsParser {
-	t, err := tty.Open()
-	if err != nil {
-		panic(t)
-	}
-	return &WindowsParser{
-		tty: t,
-	}
+	return &WindowsParser{}
 }

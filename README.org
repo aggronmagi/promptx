@@ -1,8 +1,3 @@
-* NOTE 不再维护. 
-
-之前主要用于开发阶段的工具开发, 使用amis, 通过json生成网页,对其他使用者来说更友好些.
-
-
 * promptx
 
 promptx是可定制化的交互式 cli 应用程序的库。从[[https://github.com/c-bata/go-prompt/][go-prompt]]复制了部分文件.初版实现时候也有参考 [[https://github.com/abiosoft/ishell][ishell]].
