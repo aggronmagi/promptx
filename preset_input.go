@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/aggronmagi/promptx/buffer"
 	"github.com/aggronmagi/promptx/internal/debug"
 )
 
@@ -14,25 +13,25 @@ import (
 //go:generate gogen option -n InputOption -f -o gen_options_input.go
 func promptxInputOptions() interface{} {
 	return map[string]interface{}{
-		"TipText":         "",
-		"TipTextColor":    Color(Yellow),
-		"TipBGColor":      Color(DefaultColor),
-		"PrefixText":      ">> ",
-		"PrefixTextColor": Color(Green),
-		"PrefixBGColor":   Color(DefaultColor),
-		"ValidFunc":       (func(*Document) error)(nil),
-		"ValidTextColor":  Color(Red),
-		"ValidBGColor":    Color(DefaultColor),
-		"FinishFunc":      (func(input string, eof error))(nil),
-		"FinishKey":       Key(Enter),
-		"CancelKey":       Key(ControlC),
+		"Tip":         "",
+		"TipColor":    Color(Yellow),
+		"TipBG":       Color(DefaultColor),
+		"Prefix":      ">> ",
+		"PrefixColor": Color(Green),
+		"PrefixBG":    Color(DefaultColor),
+		"Valid":       (func(*Document) error)(nil),
+		"ValidColor":  Color(Red),
+		"ValidBG":     Color(DefaultColor),
+		"OnFinish":    (func(input string, eof error))(nil),
+		"Finish":      Key(Enter),
+		"Cancel":      Key(ControlC),
 		// result display
-		"ResultText":         InputFinishTextFunc(defaultInputFinishText),
-		"ResultTextColor":    Color(Blue),
-		"ResultBGColor":      Color(DefaultColor),
-		"DefaultText":        "",
-		"DefaultTextColor":   Color(Brown),
-		"DefaultTextBGColor": Color(DefaultColor),
+		"ResultText":    InputFinishTextFunc(defaultInputFinishText),
+		"ResultColor":   Color(Blue),
+		"ResultBG":      Color(DefaultColor),
+		"Default":       "",
+		"DefaultColor":  Color(Brown),
+		"DefaultBG":     Color(DefaultColor),
 	}
 }
 
@@ -47,9 +46,9 @@ func defaultInputFinishText(cc *InputOptions, status int, doc *Document, default
 		words = append(words, &FailureWord)
 	}
 	words = append(words, &Word{
-		Text:      cc.PrefixText,
-		TextColor: cc.PrefixTextColor,
-		BGColor:   cc.PrefixBGColor,
+		Text:      cc.Prefix,
+		TextColor: cc.PrefixColor,
+		BGColor:   cc.PrefixBG,
 		Bold:      false,
 	})
 
@@ -59,8 +58,8 @@ func defaultInputFinishText(cc *InputOptions, status int, doc *Document, default
 
 	words = append(words, &Word{
 		Text:      defaultText,
-		TextColor: cc.ResultTextColor,
-		BGColor:   cc.ResultBGColor,
+		TextColor: cc.ResultColor,
+		BGColor:   cc.ResultBG,
 		Bold:      false,
 	})
 
@@ -78,7 +77,7 @@ type InputBlockManager struct {
 
 // NewInputManager new input text
 func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
-	cc.TipText = deleteBreakLineCharacters(cc.TipText)
+	cc.Tip = deleteBreakLineCharacters(cc.Tip)
 	m = &InputBlockManager{
 		BlocksBaseManager: &BlocksBaseManager{},
 		PreWords:          &BlocksWords{},
@@ -86,45 +85,45 @@ func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
 		Validate:          &BlocksNewLine{},
 		cc:                cc,
 	}
-	if len(cc.TipText) > 0 {
+	if len(cc.Tip) > 0 {
 		m.PreWords.Words = append(m.PreWords.Words, &Word{
-			Text:      cc.TipText,
-			TextColor: cc.TipTextColor,
-			BGColor:   cc.TipBGColor,
+			Text:      cc.Tip,
+			TextColor: cc.TipColor,
+			BGColor:   cc.TipBG,
 			Bold:      false,
 		})
 		m.PreWords.Words = append(m.PreWords.Words, &NewLineWord)
 	}
 	m.PreWords.Words = append(m.PreWords.Words, &AskWord)
 	m.PreWords.Words = append(m.PreWords.Words, &Word{
-		Text:      cc.PrefixText,
-		TextColor: cc.PrefixTextColor,
-		BGColor:   cc.PrefixBGColor,
+		Text:      cc.Prefix,
+		TextColor: cc.PrefixColor,
+		BGColor:   cc.PrefixBG,
 		Bold:      false,
 	})
 	// 检测默认值是否有效
-	if m.cc.DefaultText != "" {
-		doc := buffer.NewDocument()
-		doc.Text = m.cc.DefaultText
-		if err := m.cc.ValidFunc(doc); err != nil {
-			m.cc.DefaultText = ""
+	if m.cc.Default != "" {
+		doc := &Document{}
+		doc.Text = m.cc.Default
+		if err := m.cc.Valid(doc); err != nil {
+			m.cc.Default = ""
 		}
 	}
 	// 开启默认值显示
-	if m.cc.DefaultText != "" {
+	if m.cc.Default != "" {
 		m.PreWords.Words = append(m.PreWords.Words, &Word{
-			Text:      fmt.Sprintf("[%s]", m.cc.DefaultText),
-			TextColor: m.cc.DefaultTextColor,
-			BGColor:   m.cc.DefaultTextBGColor,
+			Text:      fmt.Sprintf("[%s]", m.cc.Default),
+			TextColor: m.cc.DefaultColor,
+			BGColor:   m.cc.DefaultBG,
 			Bold:      true,
 		})
 	}
 
-	m.Validate.TextColor = cc.ValidTextColor
-	m.Validate.BGColor = cc.ValidBGColor
+	m.Validate.TextColor = cc.ValidColor
+	m.Validate.BGColor = cc.ValidBG
 
-	m.SetCancelKey(cc.CancelKey)
-	m.SetFinishKey(cc.FinishKey)
+	m.SetCancelKey(cc.Cancel)
+	m.SetFinishKey(cc.Finish)
 
 	m.AddMirrorMode(m.PreWords)
 	m.AddMirrorMode(m.Input)
@@ -146,22 +145,22 @@ func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 	if status == FinishStatus {
 		// set not draw new line
 		m.SetChangeStatus(1)
-		if m.cc.FinishFunc != nil && buf != nil {
+		if m.cc.OnFinish != nil && buf != nil {
 			text := buf.Document().Text
-			if len(text) == 0 && m.cc.DefaultText != "" {
-				text = m.cc.DefaultText
+			if len(text) == 0 && m.cc.Default != "" {
+				text = m.cc.Default
 			}
 			//m.ExecTask(func() {
-			m.cc.FinishFunc(text, nil)
+			m.cc.OnFinish(text, nil)
 			//})
 		}
 		debug.Println("recv input finish")
 		return true
 	}
 	if status == CancelStatus {
-		if m.cc.FinishFunc != nil {
+		if m.cc.OnFinish != nil {
 			// m.ExecTask(func() {
-			m.cc.FinishFunc("", io.EOF)
+			m.cc.OnFinish("", io.EOF)
 			//})
 		}
 		debug.Println("recv input cancel")
@@ -180,13 +179,13 @@ func (m *InputBlockManager) PreCheckCallBack(status int, buf *Buffer) (success b
 		m.Validate.Text = ""
 	case FinishStatus, NormalStatus:
 		// 未输入参数,但是设置了默认值,不检测输入
-		if buf.Document().Text == "" && m.cc.DefaultText != "" {
+		if buf.Document().Text == "" && m.cc.Default != "" {
 			m.Validate.Text = ""
 			break
 		}
 		// 检查输入
-		if m.cc.ValidFunc != nil && buf != nil {
-			if err := m.cc.ValidFunc(buf.Document()); err != nil {
+		if m.cc.Valid != nil && buf != nil {
+			if err := m.cc.Valid(buf.Document()); err != nil {
 				m.Validate.Text = err.Error()
 				success = false
 			} else {
@@ -202,7 +201,7 @@ func (m *InputBlockManager) PreCheckCallBack(status int, buf *Buffer) (success b
 		m.Input.SetActive(false)
 		m.Validate.SetActive(false)
 
-		m.PreWords.Words = m.cc.ResultText(m.cc, status, buf.Document(), m.cc.DefaultText)
+		m.PreWords.Words = m.cc.ResultText(m.cc, status, buf.Document(), m.cc.Default)
 	}
 
 	return

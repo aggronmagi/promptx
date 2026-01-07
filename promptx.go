@@ -17,13 +17,13 @@ import (
 func promptxPromptOptions() interface{} {
 	return map[string]interface{}{
 		// default global input options
-		"InputOptions": []InputOption(nil),
+		"Inputs": []InputOption(nil),
 		// default global select options
-		"SelectOptions": []SelectOption(nil),
+		"Selects": []SelectOption(nil),
 		// default common options. use to create default optins
-		"CommonOpions": []CommonOption(nil),
-		// default manager. if it is not nil, ignore CommonOpions.
-		"BlocksManager": BlocksManager(nil),
+		"Common": []CommonOption(nil),
+		// default manager. if it is not nil, ignore Common.
+		"Manager": BlocksManager(nil),
 		// input
 		"Input": input.ConsoleParser(input.NewStandardInputParser()),
 		// output
@@ -35,45 +35,43 @@ func promptxPromptOptions() interface{} {
 // CommandSetOptions command set options
 // generate by https://github.com/aggronmagi/gogen/
 //
-//go:generate gogen option -n CommandSetOption -f -o gen_options_commandset.go
+//go:generate gogen option -n CommandSetOption -o gen_options_commandset.go
 func promptxCommandSetOptions() interface{} {
 	return map[string]interface{}{
 		// comman set name
-		"name": "",
+		"Name": "",
 		// command set commands
-		"commands": []*Cmd{},
+		"Cmds": []*Cmd{},
 		// Set the operation record of the current command set to persist the saved file. If not set, the history operation record will be cleared every time the command set is switched.
-		"HistoryFile": "",
+		"History": "",
 		// Set the pre-detection function for all commands executed in the current command set
 		"PreCheck": (func(ctx Context) error)(nil),
 		// Set the prompt string when switching to the command set(custom word color)
-		"PromptWords": []*Word{},
+		"Prompt": []*Word{},
 		// Set the notification function when switching to the command set, args is the parameter passed by SwitchCommandSet.
-		"ChangeNotify": func(ctx Context, args []interface{}) {},
+		"OnChange": func(ctx Context, args []interface{}) {},
 	}
 }
 
-// WithCommandSetOptionPrompt Set the prompt string when switching to the command set(default color)
-func WithCommandSetOptionPrompt(prompt string) CommandSetOption {
+// WithPromptStr Set the prompt string when switching to the command set(default color)
+func WithPromptStr(prompt string) CommandSetOption {
 	return func(cc *CommandSetOptions) CommandSetOption {
-		previous := cc.PromptWords
-		cc.PromptWords = []*Word{WordDefault(prompt)}
-		return WithCommandSetOptionPromptWords(previous...)
+		previous := cc.Prompt
+		cc.Prompt = []*Word{WordDefault(prompt)}
+		return WithPrompt(previous...)
 	}
 }
 
 func init() {
 	InstallCommandSetOptionsWatchDog(func(cc *CommandSetOptions) {
-		if len(cc.PromptWords) < 1 {
-			cc.PromptWords = append(cc.PromptWords, WordDefault(">> "))
+		if len(cc.Prompt) < 1 {
+			cc.Prompt = append(cc.Prompt, WordDefault(">> "))
 		}
 	})
 }
 
-// Context Run Command Context
-type Context interface {
-	// Stop stop run
-	Stop()
+// Terminal core terminal operations
+type Terminal interface {
 	// EnterRawMode enter raw mode for read key press real time
 	EnterRawMode() (err error)
 	// ExitRawMode exit raw mode
@@ -88,6 +86,30 @@ type Context interface {
 	SetTitle(title string)
 	// ClearTitle clear window title
 	ClearTitle()
+	// Print = fmt.Print
+	Print(v ...interface{})
+	// Printf = fmt.Printf
+	Printf(fmt string, v ...interface{})
+	// Println = fmt.Println
+	Println(v ...interface{})
+
+	// WPrint  print words
+	WPrint(words ...*Word)
+	// WPrintln print words and newline
+	WPrintln(words ...*Word)
+}
+
+// Interaction user-facing prompt methods
+type Interaction interface {
+	RawInput(tip string, opts ...InputOption) (result string, err error)
+	RawSelect(tip string, list []string, opts ...SelectOption) (result int)
+	RawMulSel(tip string, list []string, opts ...SelectOption) (result []int)
+}
+
+// Commander command set management and execution
+type Commander interface {
+	// Stop stop run
+	Stop()
 	// SetPrompt update prompt string. prompt will auto add space suffix.
 	SetPrompt(prompt string)
 	// SetPromptWords update prompt string. custom display.
@@ -106,55 +128,13 @@ type Context interface {
 	AddCommandSet(name string, cmds []*Cmd, opts ...CommandSetOption)
 	// SwitchCommandSet switch to specify commands set,args will pass to ChangeNotify func.
 	SwitchCommandSet(name string, args ...interface{})
-	// Print = fmt.Print
-	Print(v ...interface{})
-	// Printf = fmt.Printf
-	Printf(fmt string, v ...interface{})
-	// Println = fmt.Println
-	Println(v ...interface{})
+}
 
-	// WPrint  print words
-	WPrint(words ...*Word)
-	// WPrintln print words and newline
-	WPrintln(words ...*Word)
-
-	RawInput(tip string, opts ...InputOption) (result string, err error)
-	Input(tip string, checker InputChecker, defaultValue ...string) (result string, err error)
-	MustInput(tip string, checker InputChecker) string
-	InputInt(tip string, val int, check ...func(in int) error) (_ int, eof error)
-	MustInputInt(tip string, val int, check ...func(in int) error) int
-	InputIntSlice(tip string, val []int, check ...func(in []int) error) (_ []int, eof error)
-	MustInputIntSlice(tip string, val []int, check ...func(in []int) error) []int
-	InputInt64(tip string, val int64, check ...func(in int64) error) (_ int64, eof error)
-	MustInputInt64(tip string, val int64, check ...func(in int64) error) int64
-	InputInt64Slice(tip string, val []int64, check ...func(in []int64) error) (_ []int64, eof error)
-	MustInputInt64Slice(tip string, val []int64, check ...func(in []int64) error) []int64
-	InputInt32(tip string, val int32, check ...func(in int32) error) (_ int32, eof error)
-	MustInputInt32(tip string, val int32, check ...func(in int32) error) int32
-	InputInt32Slice(tip string, val []int32, check ...func(in []int32) error) (_ []int32, eof error)
-	MustInputInt32Slice(tip string, val []int32, check ...func(in []int32) error) []int32
-	InputString(tip string, val string, check ...func(in string) error) (_ string, eof error)
-	MustInputString(tip string, val string, check ...func(in string) error) string
-	InputStringSlice(tip string, val []string, check ...func(in []string) error) (_ []string, eof error)
-	MustInputStringSlice(tip string, val []string, check ...func(in []string) error) []string
-	InputFloat32(tip string, val float32, check ...func(in float32) error) (_ float32, eof error)
-	MustInputFloat32(tip string, val float32, check ...func(in float32) error) float32
-	InputFloat32Slice(tip string, val []float32, check ...func(in []float32) error) (_ []float32, eof error)
-	MustInputFloat32Slice(tip string, val []float32, check ...func(in []float32) error) []float32
-	InputFloat64(tip string, val float64, check ...func(in float64) error) (_ float64, eof error)
-	MustInputFloat64(tip string, val float64, check ...func(in float64) error) float64
-	InputFloat64Slice(tip string, val []float64, check ...func(in []float64) error) (_ []float64, eof error)
-	MustInputFloat64Slice(tip string, val []float64, check ...func(in []float64) error) []float64
-	RawSelect(tip string, list []string, opts ...SelectOption) (result int)
-	Select(tip string, list []string, defaultSelect ...int) (result int)
-	MustSelect(tip string, list []string, defaultSelect ...int) (result int)
-	SelectString(tip string, list []string, defaultSelect ...int) (_ string, cancel bool)
-	MustSelectString(tip string, list []string, defaultSelect ...int) string
-	RawMulSel(tip string, list []string, opts ...SelectOption) (result []int)
-	MulSel(tip string, list []string, defaultSelects ...int) (result []int)
-	MustMulSel(tip string, list []string, defaultSelects ...int) (result []int)
-	MulSelString(tip string, list []string, defaultSelects ...int) (result []string)
-	MustMulSelString(tip string, list []string, defaultSelects ...int) (result []string)
+// Context Run Command Context
+type Context interface {
+	Terminal
+	Interaction
+	Commander
 }
 
 type PromptMain interface {
@@ -175,50 +155,30 @@ type Promptx struct {
 	//
 	console *terminal.TerminalApp
 	//
-	sets map[string]*CommandSetOptions
+	mgr *commandManager
 }
 
 var _ Context = &Promptx{}
 
-// NewPromptx new prompt
-func NewPromptx(opts ...PromptOption) PromptMain {
+// New creates a new prompt application
+func New(opts ...PromptOption) PromptMain {
 	cc := NewPromptOptions(opts...)
-	return newPromptx(cc)
-}
-
-// NewCommandPromptx new with command
-func NewCommandPromptx(cmds ...*Cmd) PromptMain {
-	return NewPromptx(
-		WithCommonOpions(
-			WithCommonOptionCommands(cmds...),
-		),
-	)
-}
-
-// NewOptionCommandPromptx new with command and options
-// use for replace NewCommandPromptx when you need apply other options.
-// example: NewCommandPromptx(cmds...) => NewOptionCommandPromptx(NewPromptOptions(....),cmds...)
-func NewOptionCommandPromptx(cc *PromptOptions, cmds ...*Cmd) PromptMain {
-	if cc == nil {
-		cc = NewPromptOptions()
-	}
-	cc.CommonOpions = append(cc.CommonOpions, WithCommonOptionCommands(cmds...))
 	return newPromptx(cc)
 }
 
 // newPromptx new prompt
 func newPromptx(cc *PromptOptions) *Promptx {
 	p := new(Promptx)
-	p.sets = make(map[string]*CommandSetOptions)
-	p.selectCC = NewSelectOptions(cc.SelectOptions...)
-	p.inputCC = NewInputOptions(cc.InputOptions...)
-	if cc.BlocksManager == nil {
-		cc.BlocksManager = NewDefaultBlockManger(cc.CommonOpions...)
+	p.mgr = newCommandManager(p)
+	p.selectCC = NewSelectOptions(cc.Selects...)
+	p.inputCC = NewInputOptions(cc.Inputs...)
+	if cc.Manager == nil {
+		cc.Manager = NewDefaultBlockManger(cc.Common...)
 	}
 	p.console = terminal.NewTerminalApp(cc.Input)
-	cc.BlocksManager.SetWriter(cc.Output)
-	cc.BlocksManager.SetExecContext(p)
-	cc.BlocksManager.UpdateWinSize(cc.Input.GetWinSize())
+	cc.Manager.SetWriter(cc.Output)
+	cc.Manager.SetExecContext(p)
+	cc.Manager.UpdateWinSize(cc.Input.GetWinSize())
 	p.cc = cc
 
 	return p
@@ -226,7 +186,7 @@ func newPromptx(cc *PromptOptions) *Promptx {
 
 // Run run prompt
 func (p *Promptx) Run() (err error) {
-	p.console.Run(p.cc.BlocksManager)
+	p.console.Run(p.cc.Manager)
 	debug.Println("exit root run")
 	return
 }
@@ -282,7 +242,7 @@ func (p *Promptx) ClearTitle() {
 
 // SetPrompt update prompt.
 func (p *Promptx) SetPrompt(prompt string) {
-	if iface, ok := p.cc.BlocksManager.(interface {
+	if iface, ok := p.cc.Manager.(interface {
 		SetPrompt(prompt string)
 	}); ok {
 		iface.SetPrompt(prompt)
@@ -292,7 +252,7 @@ func (p *Promptx) SetPrompt(prompt string) {
 
 // SetPromptWords update prompt string. custom display.
 func (p *Promptx) SetPromptWords(words ...*Word) {
-	if iface, ok := p.cc.BlocksManager.(interface {
+	if iface, ok := p.cc.Manager.(interface {
 		SetPromptWords(words ...*Word)
 	}); ok {
 		iface.SetPromptWords(words...)
@@ -300,7 +260,7 @@ func (p *Promptx) SetPromptWords(words ...*Word) {
 }
 
 func (p *Promptx) ExecCommand(args []string) {
-	if iface, ok := p.cc.BlocksManager.(interface {
+	if iface, ok := p.cc.Manager.(interface {
 		ExecCommand(args []string)
 	}); ok {
 		iface.ExecCommand(args)
@@ -310,7 +270,7 @@ func (p *Promptx) ExecCommand(args []string) {
 // ResetCommands 重置命令集合
 func (p *Promptx) ResetCommands(commands ...*Cmd) {
 	debug.Println("reset command ", len(commands))
-	if iface, ok := p.cc.BlocksManager.(interface {
+	if iface, ok := p.cc.Manager.(interface {
 		ResetCommands(cmds ...*Cmd)
 	}); ok {
 		iface.ResetCommands(commands...)
@@ -319,7 +279,7 @@ func (p *Promptx) ResetCommands(commands ...*Cmd) {
 
 // RemoveHistory remove from history
 func (p *Promptx) RemoveHistory(line string) {
-	if iface, ok := p.cc.BlocksManager.(interface {
+	if iface, ok := p.cc.Manager.(interface {
 		RemoveHistory(line string)
 	}); ok {
 		iface.RemoveHistory(line)
@@ -328,7 +288,7 @@ func (p *Promptx) RemoveHistory(line string) {
 
 // AddHistory add line to history
 func (p *Promptx) AddHistory(line string) {
-	if iface, ok := p.cc.BlocksManager.(interface {
+	if iface, ok := p.cc.Manager.(interface {
 		AddHistory(line string)
 	}); ok {
 		iface.AddHistory(line)
@@ -336,7 +296,7 @@ func (p *Promptx) AddHistory(line string) {
 }
 
 func (p *Promptx) ResetHistoryFile(filename string) {
-	if iface, ok := p.cc.BlocksManager.(interface {
+	if iface, ok := p.cc.Manager.(interface {
 		ResetHistoryFile(fname string)
 	}); ok {
 		iface.ResetHistoryFile(filename)
@@ -344,7 +304,7 @@ func (p *Promptx) ResetHistoryFile(filename string) {
 }
 
 func (p *Promptx) SetCommandPreCheck(f func(ctx Context) error) {
-	if iface, ok := p.cc.BlocksManager.(interface {
+	if iface, ok := p.cc.Manager.(interface {
 		SetCommandPreCheck(f func(ctx Context) error)
 	}); ok {
 		iface.SetCommandPreCheck(f)
@@ -353,37 +313,12 @@ func (p *Promptx) SetCommandPreCheck(f func(ctx Context) error) {
 
 // AddCommandSet add command set,it will auto switch when first add commandset.
 func (p *Promptx) AddCommandSet(name string, cmds []*Cmd, opts ...CommandSetOption) {
-	if len(cmds) < 0 {
-		panic(fmt.Sprintf("commandset %s do not have any commad", name))
-	}
-	if _, ok := p.sets[name]; ok {
-		panic(fmt.Sprintf("commandset %s register repeated", name))
-	}
-	set := NewCommandSetOptions(opts...)
-	set.ApplyOption(
-		withCommandSetOptionName(name),
-		withCommandSetOptionCommands(cmds...),
-	)
-	p.sets[set.Name] = set
-	if len(p.sets) == 1 {
-		p.SwitchCommandSet(name)
-	}
+	p.mgr.AddCommandSet(name, cmds, opts...)
 }
 
 // SwitchCommandSet switch to specify comands set
 func (p *Promptx) SwitchCommandSet(name string, args ...interface{}) {
-	set, ok := p.sets[name]
-	if !ok {
-		p.Printf("commandset %s not exists", name)
-		return
-	}
-	p.ResetHistoryFile(set.HistoryFile)
-	p.SetCommandPreCheck(set.PreCheck)
-	p.ResetCommands(set.Commands...)
-	p.SetPromptWords(set.PromptWords...)
-	if set.ChangeNotify != nil {
-		set.ChangeNotify(p, args)
-	}
+	p.mgr.SwitchCommandSet(name, args...)
 }
 
 // Print = fmt.Print
@@ -431,94 +366,3 @@ func (p *Promptx) getConsoleWriter() output.ConsoleWriter {
 func (p *Promptx) getPresetOptions() (*InputOptions, *SelectOptions) {
 	return p.inputCC, p.selectCC
 }
-
-// // run internal
-// func (p *Promptx) run() (err error) {
-
-// 	defer func() {
-// 		p.start.Store(false)
-// 		p.wg.Done()
-// 	}()
-// 	if p.t == nil {
-// 		p.t = NewTerminal(p.cc.Stdin, p.cc.Stdout, p.cc.ChanSize)
-// 		p.mgr.SetWriter(output.NewConsoleWriter(p.t))
-// 	}
-// 	// update windows size
-// 	w, h, err := term.GetSize(syscall.Stdout)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	p.mgr.UpdateWinSize(w, h)
-// 	// render pre
-// 	p.mgr.Render(NormalStatus)
-// 	p.mgr.SetExecFunc(p.Exec)
-// 	p.mgr.SetExecContext(p)
-
-// 	p.stop = make(chan struct{})
-// 	p.t.Start()
-// 	defer func() {
-// 		close(p.stop)
-// 		p.t.Close()
-// 		p.stop = nil
-// 		p.t = nil
-// 	}()
-
-// 	exitCh := make(chan int)
-// 	winSize := make(chan *WinSize)
-// 	p.execCh = make(chan func())
-// 	go HandleSignals(exitCh, winSize, p.stop)
-
-// 	go func() {
-// 		for {
-// 			select {
-// 			case <-p.stop:
-// 				return
-// 			case f := <-p.execCh:
-// 				go func() {
-// 					f()
-// 					if p.exchange.Load() {
-// 						p.refreshCh <- struct{}{}
-// 					}
-// 					p.cond.Signal()
-// 				}()
-// 			}
-// 		}
-// 	}()
-
-// 	// event chan
-// 	for {
-// 		select {
-// 		case in, ok := <-p.t.InputChan():
-// 			if !ok {
-// 				return
-// 			}
-// 			key := input.GetKey(in)
-
-// 			if p.getCurrent().Event(key, in) {
-// 				if p.exchangeNext(true) {
-// 					debug.Println("recv exit. but change next screen")
-// 					break
-// 				}
-// 				debug.Println("recv exit and not change next screen")
-// 				return
-// 			}
-// 			p.exchangeNext(true)
-// 			p.exchange.Store(false)
-// 		case <-p.refreshCh:
-// 			p.getCurrent().Render(NormalStatus)
-// 		case <-p.syncCh:
-// 			p.exchangeNext(true)
-// 			p.exchange.Store(false)
-// 		case size := <-winSize:
-// 			p.getCurrent().UpdateWinSize(size.Col, size.Row)
-// 			p.getCurrent().Render(NormalStatus)
-// 		case code := <-exitCh:
-// 			p.getCurrent().Render(CancelStatus)
-// 			fmt.Println("exit code", code)
-// 			// os.Exit(code)
-// 			return
-// 		}
-// 	}
-
-// 	return
-// }

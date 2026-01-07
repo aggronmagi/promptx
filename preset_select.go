@@ -5,50 +5,43 @@ import (
 	"strings"
 )
 
-// InputOptions promptx options
+// SelectOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 //
 //go:generate gogen option -n SelectOption -f -o gen_options_select.go
 func promptxSelectOptions() interface{} {
 	return map[string]interface{}{
-		"Options":    []*Suggest(nil),
-		"RowsLimit":  int(5),
-		"FinishFunc": (func(sels []int))(nil),
-		"Multi":      false,
-		"FinishKey":  Key(Enter),
-		"CancelKey":  Key(ControlC),
-		// select tip info
-		"TipText":      "",
-		"TipTextColor": Color(Yellow),
-		"TipBGColor":   Color(DefaultColor),
-		// help text info
-		"ShowHelpText":  false,
-		"HelpText":      (SelHelpTextFunc)(defaultSelHelpText),
-		"HelpTextColor": Color(DefaultColor),
-		"HelpBGColor":   Color(DefaultColor),
-		// valid info
-		"ValidFunc":      (func(sels []int) error)(nil),
-		"ValidTextColor": Color(Red),
-		"ValidBGColor":   Color(DefaultColor),
-		// select options info
-		"SuggestionTextColor":          Color(White),
-		"SuggestionBGColor":            Color(Cyan),
-		"SelectedSuggestionTextColor":  Color(Black),
-		"SelectedSuggestionBGColor":    Color(Turquoise),
-		"DescriptionTextColor":         Color(Black),
-		"DescriptionBGColor":           Color(Turquoise),
-		"SelectedDescriptionTextColor": Color(White),
-		"SelectedDescriptionBGColor":   Color(Cyan),
-		"ScrollbarThumbColor":          Color(DarkGray),
-		"ScrollbarBGColor":             Color(Cyan),
-		// finish text show
-		"FinishText": SelFinishTextFunc(defaultSelFinishText),
-		// contrl selct result display select context
-		"ResultShowItem":  true,
-		"ResultTextColor": Color(Blue),
-		"ResultBGColor":   Color(DefaultColor),
-		// default select
-		"DefaultSelects": []int(nil),
+		"Options":   []*Suggest(nil),
+		"Rows":      int(5),
+		"OnFinish":  (func(sels []int))(nil),
+		"Multi":     false,
+		"Finish":    Key(Enter),
+		"Cancel":    Key(ControlC),
+		"Tip":       "",
+		"TipColor":  Color(Yellow),
+		"TipBG":     Color(DefaultColor),
+		"ShowHelp":  false,
+		"Help":      (SelHelpTextFunc)(defaultSelHelpText),
+		"HelpColor": Color(DefaultColor),
+		"HelpBG":    Color(DefaultColor),
+		"Valid":     (func(sels []int) error)(nil),
+		"ValidColor": Color(Red),
+		"ValidBG":   Color(DefaultColor),
+		"SuggestColor":    Color(White),
+		"SuggestBG":       Color(Cyan),
+		"SelSuggestColor": Color(Black),
+		"SelSuggestBG":    Color(Turquoise),
+		"DescColor":       Color(Black),
+		"DescBG":          Color(Turquoise),
+		"SelDescColor":    Color(White),
+		"SelDescBG":       Color(Cyan),
+		"BarColor":        Color(DarkGray),
+		"BarBG":           Color(Cyan),
+		"FinishText":      SelFinishTextFunc(defaultSelFinishText),
+		"ShowItem":        true,
+		"ResultColor":     Color(Blue),
+		"ResultBG":        Color(DefaultColor),
+		"Defaults":        []int(nil),
 	}
 }
 
@@ -74,12 +67,12 @@ func defaultSelFinishText(cc *SelectOptions, result []int) (words []*Word) {
 		words = append(words, &FailureWord)
 	}
 	words = append(words, &Word{
-		Text:      cc.TipText + " ",
-		TextColor: cc.TipTextColor,
-		BGColor:   cc.TipBGColor,
+		Text:      cc.Tip + " ",
+		TextColor: cc.TipColor,
+		BGColor:   cc.TipBG,
 	})
 	opts := make([]string, 0, len(result)+1)
-	if cc.ResultShowItem {
+	if cc.ShowItem {
 		for _, v := range result {
 			opts = append(opts, cc.Options[v].Text)
 		}
@@ -94,8 +87,8 @@ func defaultSelFinishText(cc *SelectOptions, result []int) (words []*Word) {
 
 	words = append(words, &Word{
 		Text:      strings.Join(opts, ","),
-		TextColor: cc.ResultTextColor,
-		BGColor:   cc.ResultBGColor,
+		TextColor: cc.ResultColor,
+		BGColor:   cc.ResultBG,
 	})
 	return
 }
@@ -111,7 +104,7 @@ type SelectBlockManager struct {
 
 // NewSelectManager new input text
 func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
-	cc.TipText = deleteBreakLineCharacters(cc.TipText)
+	cc.Tip = deleteBreakLineCharacters(cc.Tip)
 	m = &SelectBlockManager{
 		BlocksBaseManager: &BlocksBaseManager{},
 		PreWords:          &BlocksWords{},
@@ -120,26 +113,26 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 		cc:                cc,
 	}
 	m.Select.cc = cc
-	m.Validate.TextColor = cc.ValidTextColor
-	m.Validate.BGColor = cc.ValidBGColor
+	m.Validate.TextColor = cc.ValidColor
+	m.Validate.BGColor = cc.ValidBG
 
 	m.PreWords.Words = append(m.PreWords.Words, &SelectWord)
-	if len(cc.TipText) > 0 {
+	if len(cc.Tip) > 0 {
 		m.PreWords.Words = append(m.PreWords.Words, &Word{
-			Text:      cc.TipText,
-			TextColor: cc.TipTextColor,
-			BGColor:   cc.TipBGColor,
+			Text:      cc.Tip,
+			TextColor: cc.TipColor,
+			BGColor:   cc.TipBG,
 			Bold:      false,
 		})
 	}
 
-	if cc.ShowHelpText && cc.HelpText != nil {
-		help := cc.HelpText(cc.Multi)
+	if cc.ShowHelp && cc.Help != nil {
+		help := cc.Help(cc.Multi)
 		if len(help) > 0 {
 			m.PreWords.Words = append(m.PreWords.Words, &Word{
 				Text:      help,
-				TextColor: cc.HelpTextColor,
-				BGColor:   cc.HelpBGColor,
+				TextColor: cc.HelpColor,
+				BGColor:   cc.HelpBG,
 				Bold:      false,
 			})
 		}
@@ -150,8 +143,8 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 		m.PreWords.Words = append(m.PreWords.Words, &NewLineWord)
 	}
 
-	m.SetCancelKey(cc.CancelKey)
-	m.SetFinishKey(cc.FinishKey)
+	m.SetCancelKey(cc.Cancel)
+	m.SetFinishKey(cc.Finish)
 
 	m.AddMirrorMode(m.PreWords)
 	m.AddMirrorMode(m.Select)
@@ -163,30 +156,30 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 	// plugin exit not exit
 	m.SetCancelKeyAutoExit(false)
 	// default select
-	for len(m.cc.DefaultSelects) > 0 {
+	for len(m.cc.Defaults) > 0 {
 		validSels := make([]int, 0, len(m.cc.Options))
 		// 只传递了-1,那么就全选
-		if len(m.cc.DefaultSelects) == 1 && m.cc.DefaultSelects[0] == -1 {
+		if len(m.cc.Defaults) == 1 && m.cc.Defaults[0] == -1 {
 			for k := 0; k < len(m.cc.Options); k++ {
 				validSels = append(validSels, k)
 			}
 		} else {
 			// 传递多个参数. 检测有效性
-			for _, k := range m.cc.DefaultSelects {
+			for _, k := range m.cc.Defaults {
 				if k < 0 || k >= len(m.cc.Options) {
 					continue
 				}
 				validSels = append(validSels, k)
 			}
 		}
-		m.cc.DefaultSelects = validSels
+		m.cc.Defaults = validSels
 		if len(validSels) < 1 {
 			break
 		}
 		if m.cc.Multi {
-			m.Select.selects = m.cc.DefaultSelects
+			m.Select.selects = m.cc.Defaults
 		} else {
-			m.Select.selected = m.cc.DefaultSelects[0]
+			m.Select.selected = m.cc.Defaults[0]
 		}
 		break
 	}
@@ -199,9 +192,9 @@ func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 		// set not draw new line
 		m.SetChangeStatus(1)
 
-		if m.cc.FinishFunc != nil {
+		if m.cc.OnFinish != nil {
 			//m.ExecTask(func() {
-			m.cc.FinishFunc(m.Select.GetSelects())
+			m.cc.OnFinish(m.Select.GetSelects())
 			//})
 		}
 		return true
@@ -210,9 +203,9 @@ func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 		// set not draw new line
 		m.SetChangeStatus(1)
 
-		if m.cc.FinishFunc != nil {
+		if m.cc.OnFinish != nil {
 			//m.ExecTask(func() {
-			m.cc.FinishFunc(nil)
+			m.cc.OnFinish(nil)
 			//})
 		}
 
@@ -229,8 +222,8 @@ func (m *SelectBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 		m.Validate.Text = ""
 	case FinishStatus, NormalStatus:
 		// 检查输入
-		if m.cc.ValidFunc != nil {
-			if err := m.cc.ValidFunc(m.Select.GetSelects()); err != nil {
+		if m.cc.Valid != nil {
+			if err := m.cc.Valid(m.Select.GetSelects()); err != nil {
 				m.Validate.Text = err.Error()
 				success = false
 			} else {

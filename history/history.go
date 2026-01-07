@@ -74,10 +74,6 @@ func (h *History) Rebuild(buf string, force bool) {
 			h.tmp = append(h.tmp, v)
 		}
 	}
-	// // if not match any one histories,put all histories to tmp.
-	// if len(h.tmp) < 1 {
-	// 	h.tmp = append(h.tmp, h.histories...)
-	// }
 	h.tmp = append(h.tmp, "")
 	h.selected = len(h.tmp) - 1
 	h.buf = buf

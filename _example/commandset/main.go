@@ -19,7 +19,7 @@ const (
 func loginCommand() *promptx.Cmd {
 	return promptx.NewCommand("login", "登录游戏",
 		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
-		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
 		// 登录的服务字符串
 		ctx.CheckString(0)
@@ -71,24 +71,24 @@ func gotoCommand() *promptx.Cmd {
 }
 
 func main() {
-	p := promptx.NewPromptx()
+	p := promptx.New()
 	// default set
 	p.AddCommandSet(SetCommon, []*promptx.Cmd{
 		resetCommand(),
 		loginCommand(),
-	}, promptx.WithCommandSetOptionPreCheck(func(ctx promptx.Context) error {
+	}, promptx.WithPreCheck(func(ctx promptx.Context) error {
 		if state != 0 {
 			return errors.New("already login")
 		}
 		return nil
-	}), promptx.WithCommandSetOptionPrompt("not login >> "))
+	}), promptx.WithPromptStr("not login >> "))
 	//
 	p.AddCommandSet(SetArea1, []*promptx.Cmd{
 		gotoCommand(),
 		playCommand(),
 		resetCommand(),
 		logoutCommand(),
-	}, promptx.WithCommandSetOptionPreCheck(func(ctx promptx.Context) error {
+	}, promptx.WithPreCheck(func(ctx promptx.Context) error {
 		if state == 0 {
 			return errors.New("not login")
 		}
@@ -96,14 +96,14 @@ func main() {
 			return errors.New("not in " + SetArea1)
 		}
 		return nil
-	}), promptx.WithCommandSetOptionPrompt("area1 >> "))
+	}), promptx.WithPromptStr("area1 >> "))
 
 	p.AddCommandSet(SetArea2, []*promptx.Cmd{
 		gotoCommand(),
 		play2Command(),
 		resetCommand(),
 		logoutCommand(),
-	}, promptx.WithCommandSetOptionPreCheck(func(ctx promptx.Context) error {
+	}, promptx.WithPreCheck(func(ctx promptx.Context) error {
 		if state == 0 {
 			return errors.New("not login")
 		}
@@ -111,7 +111,7 @@ func main() {
 			return errors.New("not in " + SetArea2)
 		}
 		return nil
-	}), promptx.WithCommandSetOptionPrompt("area2 >> "))
+	}), promptx.WithPromptStr("area2 >> "))
 	log.SetOutput(p.Stdout())
 	p.Run()
 }

@@ -14,10 +14,10 @@ promptx是可定制化的交互式 cli 应用程序的库。从[[https://github.
 
 允许异步打印日志.例:
 #+begin_src go
-p := promptx.NewPromptx()
+p := promptx.New()
 log.SetOutput(p.Stdout())
 #+end_src
-这样即使在其他gorountine使用 ~log~ 打印日志也不会影响正在输入的的选项.
+样即使在其他gorountine使用 ~log~ 打印日志也不会影响正在输入的的选项.
 
 zap日志需要通过 ~p.Stdout()~ 定制实现zapcore. 
 
@@ -30,7 +30,7 @@ go get github.com/aggronmagi/promptx@latest
 func loginCommand() *promptx.Cmd {
 	return promptx.NewCommand("login", "登录游戏",
 		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
-		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
 		// 选择的登录服索引
 		index := ctx.CheckSelectIndex(0)
@@ -48,8 +48,8 @@ func loginCommand() *promptx.Cmd {
 }
 
 func main() {
-    p := promptx.NewCommandPromptx(
-		loginCommand,
+    p := promptx.New(
+		promptx.WithCommon(promptx.WithCommonOptionCmds(loginCommand())),
 		// other command ...
 	)
 	p.Run()
@@ -62,7 +62,7 @@ func main() {
 func loginCommand() *promptx.Cmd {
 	return promptx.NewCommand("login", "登录游戏",
 		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
-		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
 		// 输入的string
 		id := ctx.CheckString(1)
@@ -81,15 +81,15 @@ func logoutCommand() *promptx.Cmd {
 }
 
 func main() {
-	p := promptx.NewPromptx()
+	p := promptx.New()
 	// default set
 	p.AddCommandSet("", []*promptx.Cmd{
 		loginCommand(),
-	},promptx.WithCommandSetOptionPrompt("not login >> "))
+	},promptx.WithCommandSetOptionPromptStr("not login >> "))
 	//
 	p.AddCommandSet("linked", []*promptx.Cmd{
 		logoutCommand(),
-	}, promptx.WithCommandSetOptionPrompt("linked >> "))
+	}, promptx.WithCommandSetOptionPromptStr("linked >> "))
 
 	p.Run()
 }
@@ -117,19 +117,19 @@ func WithArgSelect(tip string, list []string, opts ...SelectOption) CommandParam
 *** Input类型参数的检测
 #+begin_src go
 // 检测输入必须是非空字符串
-func InputNotEmpty() InputChecker
+func CheckerNotEmpty() InputChecker
 // 检测输入必须是数值类型 
-func InputInteger() InputChecker
+func CheckerInteger() InputChecker
 // 检测输入必须是非0数字
-func InputNotZeroInteger() InputChecker
+func CheckerNotZeroInteger() InputChecker
 // 检测输入必须是自然数 (1,2,3....)
-func InputNaturalNumber() InputChecker
+func CheckerNaturalNumber() InputChecker
 // 检测输入必须是在min,max区间的数字 
-func InputIntegerRange(min, max int64) InputChecker
+func CheckerIntegerRange(min, max int64) InputChecker
 // 检测输入必须是IP端口(例 127.0.0.1:8080)
-func InputIPPort() InputChecker
+func CheckerIPPort() InputChecker
 // 检测输入必须是IP端口数组,使用","分隔
-func InputAddrsArray() InputChecker 
+func CheckerAddrsArray() InputChecker 
 #+end_src
 *** 命令执行函数的签名 
 #+begin_src go
@@ -176,15 +176,15 @@ type Context interface {
 命令集添加时候,允许设置以下选项:
 #+begin_src go
 // 设置当前命令集的操作记录持久化保存的文件.如果不设置,每次切换命令集都会清空历史操作记录.
-func WithCommandSetOptionHistoryFile(v string) CommandSetOption 
+func WithCommandSetOptionHistory(v string) CommandSetOption 
 // 设置当前命令集内所有命令执行的前置检测函数
 func WithCommandSetOptionPreCheck(v func(ctx Context) error) CommandSetOption 
 // 设置切换到命令集时的提示字符串(自定义文字颜色)
-func WithCommandSetOptionPromptWords(v ...*Word) CommandSetOption
+func WithCommandSetOptionPrompt(v ...*Word) CommandSetOption
 // 设置切换到命令集时的提示字符串(默认颜色)
-func WithCommandSetOptionPrompt(prompt string) CommandSetOption
+func WithCommandSetOptionPromptStr(prompt string) CommandSetOption
 // 设置切换到命令集时候的通知函数,args为 SwitchCommandSet 传递的参数.
-func WithCommandSetOptionChangeNotify(v func(ctx Context, args []interface{})) CommandSetOption 
+func WithCommandSetOptionOnChange(v func(ctx Context, args []interface{})) CommandSetOption 
 #+end_src
 
 *** Word 彩色文字
@@ -254,4 +254,3 @@ Editing
 | [ ] | ctrl + _ | Undo                                                    |
 ** 定制化
 promptx 将很多逻辑都做成了可配置项. 查看 "gen_options_*.go"
-

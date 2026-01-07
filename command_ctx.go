@@ -1,8 +1,10 @@
 package promptx
 
 import (
+	"errors"
 	"fmt"
 	"net"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -37,6 +39,9 @@ type CommandContext interface {
 	ArgSelectString(index int, tip string, list []string, defaultSelect ...int) string
 	ArgInput(index int, tip string, opts ...InputOption) (result string, eof error)
 	GetArgs() []string
+
+	// Bind bind positional arguments to struct fields.
+	Bind(v interface{}) error
 }
 
 // CmdContext run context
@@ -161,7 +166,7 @@ func (ctx *CmdContext) ArgSelect(index int, tip string, list []string, defaultSe
 			}
 		}
 	}
-	id := ctx.Select(tip, list, defaultSelect...)
+	id := Select(ctx, tip, list, defaultSelect...)
 	if id < 0 {
 		return id
 	}
@@ -178,7 +183,7 @@ func (ctx *CmdContext) ArgSelectString(index int, tip string, list []string, def
 			}
 		}
 	}
-	id := ctx.Select(tip, list, defaultSelect...)
+	id := Select(ctx, tip, list, defaultSelect...)
 	if id < 0 {
 		return ""
 	}
@@ -202,4 +207,62 @@ func (ctx *CmdContext) fixHisotry() {
 	newLine := ctx.Root.FixCommandLine(ctx.Line, ctx.Args)
 	debug.Log("add line:" + newLine)
 	ctx.AddHistory(newLine)
+}
+
+func (ctx *CmdContext) Bind(v interface{}) error {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
+		return errors.New("Bind: must be a pointer to struct")
+	}
+
+	rv = rv.Elem()
+	rt := rv.Type()
+
+	for i := 0; i < rt.NumField(); i++ {
+		field := rv.Field(i)
+		if !field.CanSet() {
+			continue
+		}
+
+		if i >= len(ctx.Args) {
+			break
+		}
+
+		val := ctx.Args[i]
+		switch field.Kind() {
+		case reflect.String:
+			field.SetString(val)
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			n, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("Bind field %s: %v", rt.Field(i).Name, err)
+			}
+			field.SetInt(n)
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			n, err := strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return fmt.Errorf("Bind field %s: %v", rt.Field(i).Name, err)
+			}
+			field.SetUint(n)
+		case reflect.Float32, reflect.Float64:
+			n, err := strconv.ParseFloat(val, 64)
+			if err != nil {
+				return fmt.Errorf("Bind field %s: %v", rt.Field(i).Name, err)
+			}
+			field.SetFloat(n)
+		case reflect.Bool:
+			n, err := strconv.ParseBool(val)
+			if err != nil {
+				return fmt.Errorf("Bind field %s: %v", rt.Field(i).Name, err)
+			}
+			field.SetBool(n)
+		case reflect.Slice:
+			if field.Type().Elem().Kind() == reflect.String {
+				field.Set(reflect.ValueOf(strings.Split(val, ",")))
+			}
+			// Add more slice types if needed
+		}
+	}
+
+	return nil
 }

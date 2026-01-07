@@ -19,8 +19,8 @@ type CommandParameter interface {
 // InputChecker input checker
 type InputChecker func(d *Document) (err error)
 
-// InputNotEmpty Detection input must be a non-empty string
-func InputNotEmpty() InputChecker {
+// CheckerNotEmpty Detection input must be a non-empty string
+func CheckerNotEmpty() InputChecker {
 	return func(d *Document) (err error) {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -29,8 +29,8 @@ func InputNotEmpty() InputChecker {
 	}
 }
 
-// InputNotEmptyAndSpace Detection input must be a non-empty string,can't contain space.
-func InputNotEmptyAndSpace() InputChecker {
+// CheckerNotEmptyAndSpace Detection input must be a non-empty string,can't contain space.
+func CheckerNotEmptyAndSpace() InputChecker {
 	return func(d *Document) (err error) {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -42,8 +42,8 @@ func InputNotEmptyAndSpace() InputChecker {
 	}
 }
 
-// InputInteger The detection input must be a non-zero value
-func InputInteger() InputChecker {
+// CheckerInteger The detection input must be a non-zero value
+func CheckerInteger() InputChecker {
 	return func(d *Document) error {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -57,8 +57,8 @@ func InputInteger() InputChecker {
 	}
 }
 
-// InputNotZeroInteger The detection input must be a non-zero number
-func InputNotZeroInteger() InputChecker {
+// CheckerNotZeroInteger The detection input must be a non-zero number
+func CheckerNotZeroInteger() InputChecker {
 	return func(d *Document) error {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -76,8 +76,8 @@ func InputNotZeroInteger() InputChecker {
 	}
 }
 
-// InputNaturalNumber Detection input must be a natural number (1,2,3....)
-func InputNaturalNumber() InputChecker {
+// CheckerNaturalNumber Detection input must be a natural number (1,2,3....)
+func CheckerNaturalNumber() InputChecker {
 	return func(d *Document) (err error) {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -95,8 +95,8 @@ func InputNaturalNumber() InputChecker {
 	}
 }
 
-// InputIntegerRange The detection input must be a number in the min, max interval
-func InputIntegerRange(min, max int64) InputChecker {
+// CheckerIntegerRange The detection input must be a number in the min, max interval
+func CheckerIntegerRange(min, max int64) InputChecker {
 	if min > max {
 		min, max = max, min
 	}
@@ -117,16 +117,16 @@ func InputIntegerRange(min, max int64) InputChecker {
 	}
 }
 
-// InputIPPort The detection input must be an IP port(example 127.0.0.1:8080)
-func InputIPPort() InputChecker {
+// CheckerIPPort The detection input must be an IP port(example 127.0.0.1:8080)
+func CheckerIPPort() InputChecker {
 	return func(d *Document) (err error) {
 		_, _, err = net.SplitHostPort(d.Text)
 		return
 	}
 }
 
-// InputAddrsArray The detection input must be an array of IP ports, separated by ",".
-func InputAddrsArray() InputChecker {
+// CheckerAddrsArray The detection input must be an array of IP ports, separated by ",".
+func CheckerAddrsArray() InputChecker {
 	return func(d *Document) (err error) {
 		for _, v := range strings.Split(d.Text, ",") {
 			_, _, err = net.SplitHostPort(v)
@@ -138,7 +138,7 @@ func InputAddrsArray() InputChecker {
 	}
 }
 
-func InputFloat64() InputChecker {
+func CheckerFloat64() InputChecker {
 	return func(d *Document) error {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -152,7 +152,7 @@ func InputFloat64() InputChecker {
 	}
 }
 
-func InputFloat64Slice() InputChecker {
+func CheckerFloat64Slice() InputChecker {
 	return func(d *Document) error {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -168,7 +168,7 @@ func InputFloat64Slice() InputChecker {
 	}
 }
 
-func InputFloat32() InputChecker {
+func CheckerFloat32() InputChecker {
 	return func(d *Document) error {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -182,7 +182,7 @@ func InputFloat32() InputChecker {
 	}
 }
 
-func InputFloat32Slice() InputChecker {
+func CheckerFloat32Slice() InputChecker {
 	return func(d *Document) error {
 		if d.Text == "" {
 			return errors.New("empty input")
@@ -213,8 +213,8 @@ func (c *inputArgsChecker) Check(ctx *CmdContext, index int) (err error) {
 			// 检测通过,打印参数
 			cc := *ctx.InputCC
 			cc.ApplyOption(c.opts...)
-			cc.SetOption(WithInputOptionPrefixText(c.tip))
-			ctx.WPrintln(cc.ResultText(&cc, 1, &Document{Text: ctx.Args[index]}, cc.DefaultText)...)
+			cc.SetOption(WithInputOptionPrefix(c.tip))
+			ctx.WPrintln(cc.ResultText(&cc, 1, &Document{Text: ctx.Args[index]}, cc.Default)...)
 			return nil
 		}
 		ctx.Printf("input %s [%s] %v", c.tip, ctx.Args[index], err)
@@ -238,7 +238,7 @@ func (c *inputArgsChecker) Check(ctx *CmdContext, index int) (err error) {
 
 // WithArgsInput Manually enter a string as a parameter
 func WithArgsInput(tip string, check InputChecker, opts ...InputOption) CommandParameter {
-	opts = append(opts, WithInputOptionValidFunc(check))
+	opts = append(opts, WithInputOptionValid(check))
 	return &inputArgsChecker{
 		tip:     tip,
 		opts:    opts,
@@ -277,7 +277,7 @@ func (c *selectArgsChecker) Check(ctx *CmdContext, index int) (err error) {
 			cc := *ctx.SelectCC
 			cc.ApplyOption(c.opts...)
 			cc.SetOption(WithSelectOptionMulti(false))
-			cc.SetOption(WithSelectOptionTipText(c.tip))
+			cc.SetOption(WithSelectOptionTip(c.tip))
 			cc.Options = make([]*completion.Suggest, 0, len(c.list))
 			for _, v := range c.list {
 				cc.Options = append(cc.Options, &Suggest{

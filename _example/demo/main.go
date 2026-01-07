@@ -48,22 +48,22 @@ func colorCommand() *promptx.Cmd {
 func loginCommand() *promptx.Cmd {
 	return promptx.NewCommand("login", "登录游戏",
 		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
-		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
-		// 选择的登录服索引
-		ctx.CheckSelectIndex(0)
-		// 登录的服务字符串
-		ctx.CheckString(0)
-		// 输入的string
-		ctx.CheckString(1)
-		ctx.Println("login success")
+		type LoginArgs struct {
+			Server  string
+			Account string
+		}
+		var args LoginArgs
+		ctx.Bind(&args)
+		ctx.Println("login success:", args.Account, "on", args.Server)
 	})
 }
 
 func login2Command() *promptx.Cmd {
 	return promptx.NewCommand("login2", "测试相似命令(test similar command)",
 		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
-		promptx.WithArgsInput("账号:", promptx.InputNotEmpty()),
+		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
 		// 选择的登录服索引
 		ctx.CheckSelectIndex(0)
@@ -113,7 +113,7 @@ func sayCommand() *promptx.Cmd {
 func promptCommand() *promptx.Cmd {
 	return promptx.NewCommand("setprompt", "set prompt string",
 		promptx.WithArgSelect("color", []string{"red", "green"}),
-		promptx.WithArgsInput("prompt:", promptx.InputNotEmpty()),
+		promptx.WithArgsInput("prompt:", promptx.CheckerNotEmpty()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
 		color := ctx.CheckSelectIndex(0)
 		if color == 0 {
@@ -123,7 +123,7 @@ func promptCommand() *promptx.Cmd {
 		ctx.SetPromptWords(&promptx.AskWord, promptx.WordGreen(" "+ctx.CheckString(1)))
 	}).SubCommands(
 		promptx.NewCommand("simple", "no color",
-			promptx.WithArgsInput("prompt:", promptx.InputNotEmpty()),
+			promptx.WithArgsInput("prompt:", promptx.CheckerNotEmpty()),
 		).ExecFunc(func(ctx promptx.CommandContext) {
 			ctx.SetPrompt(ctx.CheckString(0))
 		}),
@@ -156,15 +156,20 @@ func bashCommand() *promptx.Cmd {
 }
 func sleepCommand() *promptx.Cmd {
 	return promptx.NewCommand("sleep", "sleep some second",
-		promptx.WithArgsInput("sleep second:", promptx.InputInteger()),
+		promptx.WithArgsInput("sleep second:", promptx.CheckerInteger()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
-		time.Sleep(time.Second * time.Duration(ctx.CheckInteger(0)))
+		type SleepArgs struct {
+			Seconds int
+		}
+		var args SleepArgs
+		ctx.Bind(&args)
+		time.Sleep(time.Second * time.Duration(args.Seconds))
 	})
 }
 
 func asyncPrintCommand() *promptx.Cmd {
 	return promptx.NewCommand("async-print", "async print message",
-		promptx.WithArgsInput("print second:", promptx.InputNaturalNumber()),
+		promptx.WithArgsInput("print second:", promptx.CheckerNaturalNumber()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
 		c, cancel := context.WithTimeout(context.Background(), time.Duration(ctx.CheckInteger(0))*time.Second)
 		go func() {
@@ -233,15 +238,15 @@ func main() {
 	fmt.Printf("[%s]\n", tf([]float32{}))
 	fmt.Printf("[%s]\n", tf([]string(nil)))
 	// new promptx
-	p := promptx.NewCommandPromptx(cmds...)
+	p := promptx.New(promptx.WithCommon(promptx.WithCommonOptionCmds(cmds...)))
 	// set log writer
 	log.SetOutput(p.Stdout())
 
 	p.ExecCommand([]string{"edit", "vi"})
 
-	input, eof := p.Input("input xx:", promptx.InputNotEmpty())
+	input, eof := promptx.Input(p, "input xx:", promptx.CheckerNotEmpty())
 	fmt.Println(input, eof)
-	sel := p.Select("select xx:", []string{
+	sel := promptx.Select(p, "select xx:", []string{
 		"x1",
 		"x2",
 		"exit",

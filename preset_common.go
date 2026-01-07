@@ -15,29 +15,29 @@ import (
 //go:generate gogen option -n CommonOption -f -o gen_options_common.go
 func promptxCommonOptions() interface{} {
 	return map[string]interface{}{
-		"TipText":         "",
-		"TipTextColor":    Color(Yellow),
-		"TipBGColor":      Color(DefaultColor),
-		"PrefixText":      ">>> ",
-		"PrefixTextColor": Color(Green),
-		"PrefixBGColor":   Color(DefaultColor),
+		"Tip":         "",
+		"TipColor":    Color(Yellow),
+		"TipBG":       Color(DefaultColor),
+		"Prefix":      ">>> ",
+		"PrefixColor": Color(Green),
+		"PrefixBG":    Color(DefaultColor),
 		// check input valid
-		"ValidFunc":      (func(status int, in *Document) error)(nil),
-		"ValidTextColor": Color(Red),
-		"ValidBGColor":   Color(DefaultColor),
+		"Valid":      (func(status int, in *Document) error)(nil),
+		"ValidColor": Color(Red),
+		"ValidBG":    Color(DefaultColor),
 		// exec input command
-		"ExecFunc":   (func(ctx Context, command string))(nil),
-		"FinishKey":  Key(Enter),
-		"CancelKey":  Key(ControlC),
-		"Completion": []CompleteOption(nil),
-		// if command slice size > 0. it will ignore ExecFunc and ValidFunc options
-		"Commands": []*Cmd(nil),
+		"Exec":   (func(ctx Context, command string))(nil),
+		"Finish": Key(Enter),
+		"Cancel": Key(ControlC),
+		"Complete": []CompleteOption(nil),
+		// if command slice size > 0. it will ignore Exec and Valid options
+		"Cmds": []*Cmd(nil),
 		// alway check input command
-		"AlwaysCheckCommand": bool(false),
+		"AlwaysCheck": bool(false),
 		// history file
 		"History": string(""),
 		// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
-		"CommandPreCheck": (func(ctx Context) error)(nil),
+		"PreCheck": (func(ctx Context) error)(nil),
 	}
 }
 
@@ -58,7 +58,7 @@ type CommonBlockManager struct {
 // NewDefaultBlockManger default blocks manager.
 func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 	cc := NewCommonOptions(opts...)
-	cc.TipText = deleteBreakLineCharacters(cc.TipText)
+	cc.Tip = deleteBreakLineCharacters(cc.Tip)
 	m = &CommonBlockManager{
 		BlocksBaseManager: &BlocksBaseManager{},
 		Tip:               &BlocksWords{},
@@ -124,11 +124,11 @@ func (m *CommonBlockManager) applyOptionModify() {
 		m.hf = cc.History
 	}
 
-	if len(cc.TipText) > 0 {
+	if len(cc.Tip) > 0 {
 		m.Tip.Words = append(m.Tip.Words, &Word{
-			Text:      cc.TipText,
-			TextColor: cc.TipTextColor,
-			BGColor:   cc.TipBGColor,
+			Text:      cc.Tip,
+			TextColor: cc.TipColor,
+			BGColor:   cc.TipBG,
 			Bold:      false,
 		})
 		m.Tip.Words = append(m.Tip.Words, &NewLineWord)
@@ -136,28 +136,28 @@ func (m *CommonBlockManager) applyOptionModify() {
 
 	if len(m.PreWords.Words) == 0 {
 		m.PreWords.Words = append(m.PreWords.Words, &Word{
-			Text:      cc.PrefixText,
-			TextColor: cc.PrefixTextColor,
-			BGColor:   cc.PrefixBGColor,
+			Text:      cc.Prefix,
+			TextColor: cc.PrefixColor,
+			BGColor:   cc.PrefixBG,
 			Bold:      false,
 		})
 	}
 
-	m.Validate.TextColor = cc.ValidTextColor
-	m.Validate.BGColor = cc.ValidBGColor
+	m.Validate.TextColor = cc.ValidColor
+	m.Validate.BGColor = cc.ValidBG
 
-	m.SetCancelKey(cc.CancelKey)
-	m.SetFinishKey(cc.FinishKey)
+	m.SetCancelKey(cc.Cancel)
+	m.SetFinishKey(cc.Finish)
 	debug.Println("applyOptionModify 1")
 	// completion
 	if m.Completion.Cfg == nil {
-		m.Completion.Cfg = NewCompleteOptions(cc.Completion...)
+		m.Completion.Cfg = NewCompleteOptions(cc.Complete...)
 		m.Completion.ApplyOptions()
 		if m.Completion.Completions != nil {
 			m.Completion.Update(buffer.NewDocument())
 		}
 	} else {
-		m.Completion.ApplyOptions(cc.Completion...)
+		m.Completion.ApplyOptions(cc.Complete...)
 	}
 	debug.Println("applyOptionModify 2")
 	// command
@@ -168,7 +168,7 @@ func (m *CommonBlockManager) applyOptionModify() {
 
 func (m *CommonBlockManager) initCommand() {
 	cc := m.cc
-	if len(cc.Commands) < 1 {
+	if len(cc.Cmds) < 1 {
 		debug.Println("revert Command")
 		// revert command
 		m.root = nil
@@ -176,17 +176,17 @@ func (m *CommonBlockManager) initCommand() {
 	}
 	debug.Println("initCommand")
 	m.root = &Cmd{}
-	m.root.SubCommands(cc.Commands...)
+	m.root.SubCommands(cc.Cmds...)
 	// replace completion
 	m.Completion.ApplyOptions(
 		WithCompleteOptionCompleter(m.completeCommand),
 		WithCompleteOptionCompletionFillSpace(true),
 	)
 	// replace valid func
-	m.cc.ValidFunc = m.validCommand
+	m.cc.Valid = m.validCommand
 
 	// replace run action
-	m.cc.ExecFunc = m.execCommand
+	m.cc.Exec = m.execCommand
 }
 
 func (m *CommonBlockManager) completeCommand(in Document) []*Suggest {
@@ -195,7 +195,7 @@ func (m *CommonBlockManager) completeCommand(in Document) []*Suggest {
 
 func (m *CommonBlockManager) validCommand(status int, d *Document) error {
 	// is check normal status
-	if status == NormalStatus && !m.cc.AlwaysCheckCommand {
+	if status == NormalStatus && !m.cc.AlwaysCheck {
 		return nil
 	}
 	if len(d.Text) == 0 {
@@ -215,8 +215,8 @@ func (m *CommonBlockManager) execCommand(oldCtx Context, command string) {
 		return
 	}
 	// cmd precheck
-	if m.cc.CommandPreCheck != nil {
-		err := m.cc.CommandPreCheck(oldCtx)
+	if m.cc.PreCheck != nil {
+		err := m.cc.PreCheck(oldCtx)
 		if err != nil {
 			oldCtx.Println("precheck failed,", err)
 			return
@@ -270,8 +270,8 @@ func (m *CommonBlockManager) SetPrompt(text string) {
 	m.PreWords.Words = []*Word{
 		{
 			Text:      text,
-			TextColor: m.cc.PrefixTextColor,
-			BGColor:   m.cc.PrefixBGColor,
+			TextColor: m.cc.PrefixColor,
+			BGColor:   m.cc.PrefixBG,
 			Bold:      false,
 		},
 	}
@@ -295,7 +295,7 @@ func (m *CommonBlockManager) SetPromptWords(words ...*Word) {
 // ResetCommands 重置命令集合
 func (m *CommonBlockManager) ResetCommands(cmds ...*Cmd) {
 	debug.Println("common.blocks reset commands", len(cmds))
-	m.ApplyOption(WithCommonOptionCommands(cmds...))
+	m.ApplyOption(WithCommonOptionCmds(cmds...))
 }
 
 // RemoveHistory remove from history
@@ -329,7 +329,7 @@ func (m *CommonBlockManager) ResetHistoryFile(filename string) {
 }
 
 func (m *CommonBlockManager) SetCommandPreCheck(f func(ctx Context) error) {
-	m.cc.CommandPreCheck = f
+	m.cc.PreCheck = f
 }
 
 func (m *CommonBlockManager) SetOption(opt CommonOption) {
@@ -359,8 +359,8 @@ func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (
 		if m.Input.IsBind(key) || key == NotDefined {
 			m.history.Rebuild(ctx.GetBuffer().Text(), false)
 		}
-		if key == m.cc.CancelKey ||
-			key == m.cc.FinishKey {
+		if key == m.cc.Cancel ||
+			key == m.cc.Finish {
 			m.history.Rebuild("", true)
 		}
 		// when exit,reset completion.
@@ -374,11 +374,11 @@ func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (
 // FinishCallBack  call back
 func (m *CommonBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 	if status == FinishStatus {
-		if m.cc.ExecFunc != nil && buf != nil && buf.Text() != "" {
+		if m.cc.Exec != nil && buf != nil && buf.Text() != "" {
 			text := buf.Document().Text
 			ctx := m.GetContext()
 			m.history.Add(buf.Text())
-			m.cc.ExecFunc(ctx, text)
+			m.cc.Exec(ctx, text)
 		}
 	}
 	return false
@@ -400,12 +400,12 @@ func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success 
 	}
 
 	// check input
-	if m.cc.ValidFunc != nil && buf != nil {
+	if m.cc.Valid != nil && buf != nil {
 		switch status {
 		case CancelStatus:
 			m.Validate.Text = ""
 		case FinishStatus, NormalStatus:
-			if err := m.cc.ValidFunc(status, buf.Document()); err != nil {
+			if err := m.cc.Valid(status, buf.Document()); err != nil {
 				m.Validate.Text = err.Error()
 				success = false
 			} else {

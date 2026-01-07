@@ -1,5 +1,7 @@
 package promptx
 
+import completion "github.com/aggronmagi/promptx/completion"
+
 // RawSelect get select value with raw option
 func (p *Promptx) RawSelect(tip string, list []string, opts ...SelectOption) (result int) {
 	// copy new config
@@ -24,7 +26,7 @@ func (p *Promptx) RawSelect(tip string, list []string, opts ...SelectOption) (re
 			return -1
 		}
 		for _, v := range list {
-			newCC.Options = append(newCC.Options, &Suggest{
+			newCC.Options = append(newCC.Options, &completion.Suggest{
 				Text: v,
 			})
 		}
@@ -36,43 +38,6 @@ func (p *Promptx) RawSelect(tip string, list []string, opts ...SelectOption) (re
 	sel.UpdateWinSize(p.cc.Input.GetWinSize())
 	p.console.Run(sel)
 	return
-}
-
-// Select get select value
-func (p *Promptx) Select(tip string, list []string, defaultSelect ...int) (result int) {
-	if len(defaultSelect) > 0 {
-		return p.RawSelect(tip, list, WithSelectOptionDefaultSelects(defaultSelect[0]))
-	}
-
-	return p.RawSelect(tip, list)
-}
-
-// Select get select value
-func (p *Promptx) MustSelect(tip string, list []string, defaultSelect ...int) (result int) {
-	result = p.Select(tip, list, defaultSelect...)
-	if result < 0 {
-		panic("user cancel")
-	}
-	return result
-}
-
-// Select get select value
-func (p *Promptx) SelectString(tip string, list []string, defaultSelect ...int) (_ string, cancel bool) {
-	index := p.Select(tip, list, defaultSelect...)
-	if index < 0 {
-		cancel = true
-		return
-	}
-	return list[index], false
-}
-
-// Select get select value
-func (p *Promptx) MustSelectString(tip string, list []string, defaultSelect ...int) string {
-	index := p.Select(tip, list, defaultSelect...)
-	if index < 0 {
-		panic("user cancel")
-	}
-	return list[index]
 }
 
 // RawMulSel get multiple value with raw option
@@ -93,7 +58,7 @@ func (p *Promptx) RawMulSel(tip string, list []string, opts ...SelectOption) (re
 			return
 		}
 		for _, v := range list {
-			newCC.Options = append(newCC.Options, &Suggest{
+			newCC.Options = append(newCC.Options, &completion.Suggest{
 				Text: v,
 			})
 		}
@@ -104,41 +69,4 @@ func (p *Promptx) RawMulSel(tip string, list []string, opts ...SelectOption) (re
 	sel.UpdateWinSize(p.cc.Input.GetWinSize())
 	p.console.Run(sel)
 	return
-}
-
-// MulSel get multiple value with raw option
-func (p *Promptx) MulSel(tip string, list []string, defaultSelects ...int) (result []int) {
-	return p.RawMulSel(tip, list, WithSelectOptionDefaultSelects(defaultSelects...))
-}
-
-// MulSel get multiple value with raw option
-func (p *Promptx) MustMulSel(tip string, list []string, defaultSelects ...int) (result []int) {
-	result = p.RawMulSel(tip, list, WithSelectOptionDefaultSelects(defaultSelects...))
-	if len(result) < 1 {
-		panic("user cancel")
-	}
-	return result
-}
-
-// MulSel get multiple value with raw option
-func (p *Promptx) MulSelString(tip string, list []string, defaultSelects ...int) (result []string) {
-	sels := p.RawMulSel(tip, list, WithSelectOptionDefaultSelects(defaultSelects...))
-	result = make([]string, 0, len(sels))
-	for _, k := range sels {
-		result = append(result, list[k])
-	}
-	return result
-}
-
-// MustMulSelString get multiple value with raw option
-func (p *Promptx) MustMulSelString(tip string, list []string, defaultSelects ...int) (result []string) {
-	sels := p.RawMulSel(tip, list, WithSelectOptionDefaultSelects(defaultSelects...))
-	if len(sels) < 1 {
-		panic("user cancel")
-	}
-	result = make([]string, 0, len(sels))
-	for _, k := range sels {
-		result = append(result, list[k])
-	}
-	return result
 }
