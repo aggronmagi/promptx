@@ -8,7 +8,7 @@ func (p *Promptx) RawSelect(tip string, list []string, opts ...SelectOption) (re
 	newCC := *p.selectCC
 	newCC.ApplyOption(opts...)
 	// reset options internal
-	newCC.SetOption(WithSelectOptionFinishFunc(
+	newCC.SetOption(WithSelectOptionOnFinish(
 		func(sels []int) {
 			if len(sels) < 1 {
 				result = -1
@@ -18,7 +18,7 @@ func (p *Promptx) RawSelect(tip string, list []string, opts ...SelectOption) (re
 		},
 	))
 	newCC.SetOption(WithSelectOptionMulti(false))
-	newCC.SetOption(WithSelectOptionTipText(tip))
+	newCC.SetOption(WithSelectOptionTip(tip))
 
 	// if opts set options. use opts values
 	if len(newCC.Options) < 1 {
@@ -45,7 +45,7 @@ func (p *Promptx) RawMulSel(tip string, list []string, opts ...SelectOption) (re
 	// copy new config
 	newCC := *p.selectCC
 	newCC.ApplyOption(opts...)
-	newCC.SetOption(WithSelectOptionFinishFunc(
+	newCC.SetOption(WithSelectOptionOnFinish(
 		func(sels []int) {
 			result = sels
 		},

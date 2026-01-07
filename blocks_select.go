@@ -36,7 +36,7 @@ func (c *BlocksSelect) InitBlocks() {
 		// 空格选中
 		c.BindASCII(c.Select, ' ')
 	} else {
-		c.BindKey(c.Select, c.cc.FinishKey)
+		c.BindKey(c.Select, c.cc.Finish)
 	}
 
 	// c.BindKey(c.Cancel, c.cc.CancelKey)
@@ -76,7 +76,7 @@ func (c *BlocksSelect) Previous(ctx PressContext) (exit bool) {
 
 // Next to select the next suggestion item.
 func (c *BlocksSelect) Next(ctx PressContext) (exit bool) {
-	if c.verticalScroll+int(c.cc.RowsLimit)-1 == c.selected {
+	if c.verticalScroll+int(c.cc.Rows)-1 == c.selected {
 		c.verticalScroll++
 	}
 	c.selected++
@@ -85,7 +85,7 @@ func (c *BlocksSelect) Next(ctx PressContext) (exit bool) {
 }
 
 func (c *BlocksSelect) update() {
-	max := int(c.cc.RowsLimit)
+	max := int(c.cc.Rows)
 	if len(c.cc.Options) < max {
 		max = len(c.cc.Options)
 	}
@@ -132,8 +132,8 @@ func (c *BlocksSelect) Render(ctx PrintContext, preCursor int) int {
 	}
 
 	windowHeight := len(suggestions)
-	if windowHeight > c.cc.RowsLimit {
-		windowHeight = c.cc.RowsLimit
+	if windowHeight > c.cc.Rows {
+		windowHeight = c.cc.Rows
 	}
 
 	if ctx.Prepare() {
@@ -181,10 +181,10 @@ func (c *BlocksSelect) Render(ctx PrintContext, preCursor int) int {
 		ctx.Backward(cursor+width, width+prefixLen)
 
 		if i == selected {
-			out.SetColor(c.cc.SelectedSuggestionTextColor, c.cc.SelectedSuggestionBGColor, true)
+			out.SetColor(c.cc.SelSuggestColor, c.cc.SelSuggestBG, true)
 			out.WriteStr(strMultiChoiceCur)
 		} else {
-			out.SetColor(c.cc.SuggestionTextColor, c.cc.SuggestionBGColor, false)
+			out.SetColor(c.cc.SuggestColor, c.cc.SuggestBG, false)
 			out.WriteStr(strMultiChoiceNot)
 		}
 		// 多选
@@ -199,16 +199,16 @@ func (c *BlocksSelect) Render(ctx PrintContext, preCursor int) int {
 		out.WriteStr(formatted[i].Text)
 
 		if i == selected {
-			out.SetColor(c.cc.SelectedDescriptionTextColor, c.cc.SelectedDescriptionBGColor, false)
+			out.SetColor(c.cc.SelDescColor, c.cc.SelDescBG, false)
 		} else {
-			out.SetColor(c.cc.DescriptionTextColor, c.cc.DescriptionBGColor, false)
+			out.SetColor(c.cc.DescColor, c.cc.DescBG, false)
 		}
 		out.WriteStr(formatted[i].Description)
 
 		if isScrollThumb(i) {
-			out.SetColor(DefaultColor, c.cc.ScrollbarThumbColor, false)
+			out.SetColor(DefaultColor, c.cc.BarColor, false)
 		} else {
-			out.SetColor(DefaultColor, c.cc.ScrollbarBGColor, false)
+			out.SetColor(DefaultColor, c.cc.BarBG, false)
 		}
 		out.WriteStr(" ")
 		out.SetColor(DefaultColor, DefaultColor, false)

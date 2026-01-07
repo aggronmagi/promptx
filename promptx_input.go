@@ -12,11 +12,11 @@ func (p *Promptx) RawInput(tip string, opts ...InputOption) (result string, err 
 	// apply input opts
 	newCC.ApplyOption(opts...)
 	// set internal options
-	newCC.SetOption(WithInputOptionFinishFunc(func(input string, eof error) {
+	newCC.SetOption(WithInputOptionOnFinish(func(input string, eof error) {
 		result, err = input, eof
 	}))
 	if tip != "" {
-		newCC.SetOption(WithInputOptionPrefixText(tip))
+		newCC.SetOption(WithInputOptionPrefix(tip))
 	}
 	//
 	input := NewInputManager(&newCC)
