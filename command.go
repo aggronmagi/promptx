@@ -325,7 +325,6 @@ func (c *Cmd) findSugest(line []rune, pos int, origLine string, cmds []*Cmd) (su
 		}
 		suggest = append(suggest, s)
 		offset = len(name)
-		return
 	}
 	for _, child := range c.subCommands {
 		// command name

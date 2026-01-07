@@ -29,6 +29,7 @@ func promptxCompleteOptions() interface{} {
 		"Completer":                    Completer(nil),
 		"CompleteMax":                  int(5),
 		"CompletionFillSpace":          false,
+		"WordSeparator":                string(" "),
 	}
 }
 
@@ -52,6 +53,7 @@ func (c *BlocksCompletion) ApplyOptions(opt ...CompleteOption) {
 	debug.Println("new:", c.Cfg.Completer != nil)
 	if c.Cfg.Completer != nil {
 		c.Completions = completion.NewCompletionManager(c.Cfg.CompleteMax)
+		c.Completions.WordSeparator = c.Cfg.WordSeparator
 		c.SetActive(true)
 		debug.Println("enable compeltion", stack.TakeStacktrace(1))
 	} else {

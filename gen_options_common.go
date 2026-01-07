@@ -30,6 +30,18 @@ type CommonOptions struct {
 	AlwaysCheck bool
 	// history file
 	History string
+	// maximum history size
+	HistoryMaxSize int
+	// ignore consecutive duplicates
+	HistoryIgnoreDups bool
+	// global deduplication
+	HistoryDedup bool
+	// record timestamps
+	HistoryTimestamp bool
+	// OnNonCommand deal with non command input
+	OnNonCommand func(ctx Context, command string) error
+	// CommandPrefix command prefix. example '/'
+	CommandPrefix string
 	// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
 	PreCheck func(ctx Context) error
 }
@@ -167,6 +179,54 @@ func WithCommonOptionHistory(v string) CommonOption {
 	}
 }
 
+func WithCommonOptionHistoryMaxSize(v int) CommonOption {
+	return func(cc *CommonOptions) CommonOption {
+		previous := cc.HistoryMaxSize
+		cc.HistoryMaxSize = v
+		return WithCommonOptionHistoryMaxSize(previous)
+	}
+}
+
+func WithCommonOptionHistoryIgnoreDups(v bool) CommonOption {
+	return func(cc *CommonOptions) CommonOption {
+		previous := cc.HistoryIgnoreDups
+		cc.HistoryIgnoreDups = v
+		return WithCommonOptionHistoryIgnoreDups(previous)
+	}
+}
+
+func WithCommonOptionHistoryDedup(v bool) CommonOption {
+	return func(cc *CommonOptions) CommonOption {
+		previous := cc.HistoryDedup
+		cc.HistoryDedup = v
+		return WithCommonOptionHistoryDedup(previous)
+	}
+}
+
+func WithCommonOptionHistoryTimestamp(v bool) CommonOption {
+	return func(cc *CommonOptions) CommonOption {
+		previous := cc.HistoryTimestamp
+		cc.HistoryTimestamp = v
+		return WithCommonOptionHistoryTimestamp(previous)
+	}
+}
+
+func WithCommonOptionOnNonCommand(v func(ctx Context, command string) error) CommonOption {
+	return func(cc *CommonOptions) CommonOption {
+		previous := cc.OnNonCommand
+		cc.OnNonCommand = v
+		return WithCommonOptionOnNonCommand(previous)
+	}
+}
+
+func WithCommonOptionCommandPrefix(v string) CommonOption {
+	return func(cc *CommonOptions) CommonOption {
+		previous := cc.CommandPrefix
+		cc.CommandPrefix = v
+		return WithCommonOptionCommandPrefix(previous)
+	}
+}
+
 // CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
 func WithCommonOptionPreCheck(v func(ctx Context) error) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
@@ -234,6 +294,12 @@ func newDefaultCommonOptions() *CommonOptions {
 		Cmds:        nil,
 		AlwaysCheck: false,
 		History:     "",
+		HistoryMaxSize:    10000,
+		HistoryIgnoreDups: true,
+		HistoryDedup:      false,
+		HistoryTimestamp:  false,
+		OnNonCommand:      nil,
+		CommandPrefix:     "",
 		PreCheck:    nil,
 	}
 	return cc

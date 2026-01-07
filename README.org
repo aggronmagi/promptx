@@ -32,25 +32,33 @@ func loginCommand() *promptx.Cmd {
 		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
 		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
-		// 选择的登录服索引
-		index := ctx.CheckSelectIndex(0)
-		// 登录的服务字符串
-		svcName := ctx.CheckString(0)
-		// 输入的账号
-		account := ctx.CheckString(1)
+		// 强类型参数绑定
+		type LoginArgs struct {
+			Server  string
+			Account string
+		}
+		var args LoginArgs
+		if err := ctx.Bind(&args); err != nil {
+			ctx.Printf("参数绑定失败: %v\n", err)
+			return
+		}
+		
+		// 或者使用位置访问
+		// index := ctx.CheckSelectIndex(0)
+		// account := ctx.CheckString(1)
 		
 		// custom logic
 		// ....
 
-		//
-		ctx.Println("login success")
+		ctx.Printf("登录成功: %s 服务器: %s\n", args.Account, args.Server)
 	})
 }
 
 func main() {
+    // 使用统一构造函数 New
     p := promptx.New(
 		promptx.WithCommon(promptx.WithCommonOptionCmds(loginCommand())),
-		// other command ...
+		// 其他命令 ...
 	)
 	p.Run()
 }
@@ -68,7 +76,7 @@ func loginCommand() *promptx.Cmd {
 		id := ctx.CheckString(1)
 		ctx.Println(id, "login success")
 		state = 1
-		//
+		// 切换命令集
 		ctx.SwitchCommandSet("linked")
 	})
 }
@@ -82,14 +90,14 @@ func logoutCommand() *promptx.Cmd {
 
 func main() {
 	p := promptx.New()
-	// default set
+	// 添加命令集，使用简化的选项名称
 	p.AddCommandSet("", []*promptx.Cmd{
 		loginCommand(),
-	},promptx.WithCommandSetOptionPromptStr("not login >> "))
+	}, promptx.WithPromptStr("not login >> "))
 	//
 	p.AddCommandSet("linked", []*promptx.Cmd{
 		logoutCommand(),
-	}, promptx.WithCommandSetOptionPromptStr("linked >> "))
+	}, promptx.WithPromptStr("linked >> "))
 
 	p.Run()
 }
@@ -138,22 +146,19 @@ func xx(ctx CommandContext) {
 }
 #+end_src
 *** 命令上下文 CommandContext
-命令执行函数内 使用 ~CommandContext~ 提供的 ~Check...~ 方法获取参数.
+命令执行函数内 使用 ~CommandContext~ 提供的 ~Check...~ 方法或 ~Bind~ 方法获取参数.
 
-所有Check方法,如果没有用户没有输入,会通过panic打断流程.或者是输入了不符合预期的值,也会通过panic打断流程.
+Check 方法调用推荐和创建命令时候输入的 ~CommandParameter~ 一一匹配. Index 参数从 0 开始.
 
-Check 函数的调用应该和创建命令时候输入的 ~CommandParameter~ 一一匹配.
-
-Check 函数的Index参数从0开始.
-
-~CommandParameter~ 检测通过之后,内部保留的玩家输入都是string类型.所以 ~CheckString~ 只要索引位置输入了值,都是有效的.
-
-~CheckSelectIndex~ 仅用于 ~WithArgSelect~ 对应的参数,获取玩家输入的是第几个选项(从0开始)
 #+begin_src go
 // CommandContext
 type CommandContext interface {
 	Context
 
+	// 强类型绑定 (推荐)
+	Bind(v interface{}) error
+
+	// 位置访问
 	CheckString(index int) string
 	CheckInteger(index int) int64
 	CheckIPPort(index int) (ip, port string)
@@ -165,7 +170,6 @@ type CommandContext interface {
 可以添加不同的命令集合,首次添加的命令集合会设置为默认的命令集.
 #+begin_src go
 type Context interface {
-	// others interface function ...
 	// AddCommandSet 添加命令集，首次添加命令集时会自动切换。
 	AddCommandSet(name string, cmds []*Cmd, opts ...CommandSetOption) 
 	// SwitchCommandSet 切换到指定命令集,参数会传递给 ChangeNotify 函数
@@ -176,15 +180,19 @@ type Context interface {
 命令集添加时候,允许设置以下选项:
 #+begin_src go
 // 设置当前命令集的操作记录持久化保存的文件.如果不设置,每次切换命令集都会清空历史操作记录.
-func WithCommandSetOptionHistory(v string) CommandSetOption 
+func WithHistory(v string) CommandSetOption 
 // 设置当前命令集内所有命令执行的前置检测函数
-func WithCommandSetOptionPreCheck(v func(ctx Context) error) CommandSetOption 
+func WithPreCheck(v func(ctx Context) error) CommandSetOption 
 // 设置切换到命令集时的提示字符串(自定义文字颜色)
-func WithCommandSetOptionPrompt(v ...*Word) CommandSetOption
+func WithPrompt(v ...*Word) CommandSetOption
 // 设置切换到命令集时的提示字符串(默认颜色)
-func WithCommandSetOptionPromptStr(prompt string) CommandSetOption
+func WithPromptStr(prompt string) CommandSetOption
 // 设置切换到命令集时候的通知函数,args为 SwitchCommandSet 传递的参数.
-func WithCommandSetOptionOnChange(v func(ctx Context, args []interface{})) CommandSetOption 
+func WithOnChange(v func(ctx Context, args []interface{})) CommandSetOption 
+// 设置非命令输入时候的处理函数。返回 nil 视为处理成功（记录历史），返回 error 则打印错误。
+func WithCommonOptionOnNonCommand(v func(ctx Context, command string) error) CommonOption
+// 设置命令前缀。例如设置为 '/'，则只有以 '/' 开头的输入才会被视为命令。
+func WithCommonOptionCommandPrefix(v string) CommonOption
 #+end_src
 
 *** Word 彩色文字

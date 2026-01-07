@@ -55,8 +55,11 @@ func loginCommand() *promptx.Cmd {
 			Account string
 		}
 		var args LoginArgs
-		ctx.Bind(&args)
-		ctx.Println("login success:", args.Account, "on", args.Server)
+		if err := ctx.Bind(&args); err == nil {
+			ctx.Println("login success:", args.Account, "on", args.Server)
+		} else {
+			ctx.Println("args bind error:", err)
+		}
 	})
 }
 

@@ -26,6 +26,19 @@ func NewDocument() *Document {
 	}
 }
 
+// NewDocumentWithCursor return the new document with text and cursor position.
+func NewDocumentWithCursor(text string, pos int) *Document {
+	return &Document{
+		Text:           text,
+		cursorPosition: pos,
+	}
+}
+
+// CursorPosition returns the cursor position.
+func (d *Document) CursorPosition() int {
+	return d.cursorPosition
+}
+
 // DisplayCursorPosition returns the cursor position on rendered text on terminal emulators.
 // So if Document is "日本(cursor)語", DisplayedCursorPosition returns 4 because '日' and '本' are double width characters.
 func (d *Document) DisplayCursorPosition() int {

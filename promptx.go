@@ -3,6 +3,7 @@ package promptx
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	input "github.com/aggronmagi/promptx/input"
 	"github.com/aggronmagi/promptx/internal/debug"
@@ -55,6 +56,9 @@ func promptxCommandSetOptions() interface{} {
 
 // WithPromptStr Set the prompt string when switching to the command set(default color)
 func WithPromptStr(prompt string) CommandSetOption {
+	if !strings.HasSuffix(prompt, " ") {
+		prompt += " "
+	}
 	return func(cc *CommandSetOptions) CommandSetOption {
 		previous := cc.Prompt
 		cc.Prompt = []*Word{WordDefault(prompt)}
@@ -160,7 +164,12 @@ type Promptx struct {
 
 var _ Context = &Promptx{}
 
-// New creates a new prompt application
+// New creates a new prompt application.
+// It is the recommended entry point for creating a promptx application.
+//
+// Example:
+//
+//	p := promptx.New(promptx.WithCommon(promptx.WithCmds(cmds...)))
 func New(opts ...PromptOption) PromptMain {
 	cc := NewPromptOptions(opts...)
 	return newPromptx(cc)

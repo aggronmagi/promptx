@@ -26,9 +26,9 @@ func promptxCommonOptions() interface{} {
 		"ValidColor": Color(Red),
 		"ValidBG":    Color(DefaultColor),
 		// exec input command
-		"Exec":   (func(ctx Context, command string))(nil),
-		"Finish": Key(Enter),
-		"Cancel": Key(ControlC),
+		"Exec":     (func(ctx Context, command string))(nil),
+		"Finish":   Key(Enter),
+		"Cancel":   Key(ControlC),
 		"Complete": []CompleteOption(nil),
 		// if command slice size > 0. it will ignore Exec and Valid options
 		"Cmds": []*Cmd(nil),
@@ -36,6 +36,18 @@ func promptxCommonOptions() interface{} {
 		"AlwaysCheck": bool(false),
 		// history file
 		"History": string(""),
+		// maximum history size
+		"HistoryMaxSize": int(10000),
+		// ignore consecutive duplicates
+		"HistoryIgnoreDups": bool(true),
+		// global deduplication
+		"HistoryDedup": bool(false),
+		// record timestamps
+		"HistoryTimestamp": bool(false),
+		// OnNonCommand deal with non command input
+		"OnNonCommand": (func(ctx Context, command string) error)(nil),
+		// CommandPrefix command prefix. example '/'
+		"CommandPrefix": string(""),
 		// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
 		"PreCheck": (func(ctx Context) error)(nil),
 	}
@@ -67,7 +79,12 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 		Validate:          &BlocksNewLine{},
 		Completion:        &BlocksCompletion{},
 		cc:                cc,
-		history:           history.NewHistory(),
+		history: history.NewHistory(
+			history.WithMaxSize(cc.HistoryMaxSize),
+			history.WithIgnoreDups(cc.HistoryIgnoreDups),
+			history.WithDeduplicate(cc.HistoryDedup),
+			history.WithTimestamp(cc.HistoryTimestamp),
+		),
 	}
 
 	m.AddMirrorMode(m.Tip)
@@ -113,6 +130,13 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 
 func (m *CommonBlockManager) applyOptionModify() {
 	cc := m.cc
+
+	m.history.ApplyOptions(
+		history.WithMaxSize(cc.HistoryMaxSize),
+		history.WithIgnoreDups(cc.HistoryIgnoreDups),
+		history.WithDeduplicate(cc.HistoryDedup),
+		history.WithTimestamp(cc.HistoryTimestamp),
+	)
 
 	if m.hf != cc.History {
 		if len(m.hf) == 0 {
@@ -177,10 +201,15 @@ func (m *CommonBlockManager) initCommand() {
 	debug.Println("initCommand")
 	m.root = &Cmd{}
 	m.root.SubCommands(cc.Cmds...)
+	sep := " "
+	if m.cc.CommandPrefix != "" {
+		sep += m.cc.CommandPrefix
+	}
 	// replace completion
 	m.Completion.ApplyOptions(
 		WithCompleteOptionCompleter(m.completeCommand),
 		WithCompleteOptionCompletionFillSpace(true),
+		WithCompleteOptionWordSeparator(sep),
 	)
 	// replace valid func
 	m.cc.Valid = m.validCommand
@@ -190,6 +219,21 @@ func (m *CommonBlockManager) initCommand() {
 }
 
 func (m *CommonBlockManager) completeCommand(in Document) []*Suggest {
+	text := in.Text
+	if m.cc.CommandPrefix != "" {
+		if !strings.HasPrefix(text, m.cc.CommandPrefix) {
+			return nil
+		}
+		prefixLen := len(m.cc.CommandPrefix)
+		prefixRunes := len([]rune(m.cc.CommandPrefix))
+
+		newText := text[prefixLen:]
+		newCursor := in.CursorPosition() - prefixRunes
+		if newCursor < 0 {
+			newCursor = 0
+		}
+		in = *buffer.NewDocumentWithCursor(newText, newCursor)
+	}
 	return m.root.FindSuggest(&in)
 }
 
@@ -201,7 +245,14 @@ func (m *CommonBlockManager) validCommand(status int, d *Document) error {
 	if len(d.Text) == 0 {
 		return nil
 	}
-	cmds, _, err := m.root.ParseInput(d.Text)
+	text := d.Text
+	if m.cc.CommandPrefix != "" {
+		if !strings.HasPrefix(text, m.cc.CommandPrefix) {
+			return nil
+		}
+		text = text[len(m.cc.CommandPrefix):]
+	}
+	cmds, _, err := m.root.ParseInput(text)
 	if err != nil {
 		return err
 	}
@@ -222,35 +273,56 @@ func (m *CommonBlockManager) execCommand(oldCtx Context, command string) {
 			return
 		}
 	}
-	ctx := &CmdContext{}
-	ctx.Context = m.GetContext()
-	ctx.Line = command
-	ctx.Cmds, ctx.Args, _ = m.root.ParseInput(command)
-	ctx.Root = m.root
-	if gt, ok := ctx.Context.(interface {
-		getPresetOptions() (*InputOptions, *SelectOptions)
-	}); ok {
-		ctx.InputCC, ctx.SelectCC = gt.getPresetOptions()
-	}
 
-	// debug.Println("find cmd size:", len(ctx.Cmds))
-	// find last command which set exec func.
-	find := false
-	for i := len(ctx.Cmds) - 1; i >= 0; i-- {
-		cmd := ctx.Cmds[i]
-		// debug.Println("find ", cmd.Name)
-		if cmd.execFunc != nil {
-			ctx.Cur = cmd
-			// exec command
-			ctx.execCommand()
-			// // exec command func
-			// cmd.Func(ctx)
-			find = true
-			break
+	execText := command
+	isCmd := true
+	if m.cc.CommandPrefix != "" {
+		if !strings.HasPrefix(command, m.cc.CommandPrefix) {
+			isCmd = false
+		} else {
+			execText = command[len(m.cc.CommandPrefix):]
 		}
 	}
+
+	find := false
+	if isCmd {
+		ctx := &CmdContext{}
+		ctx.Context = m.GetContext()
+		ctx.Line = command
+		ctx.Cmds, ctx.Args, _ = m.root.ParseInput(execText)
+		ctx.Root = m.root
+		if gt, ok := ctx.Context.(interface {
+			getPresetOptions() (*InputOptions, *SelectOptions)
+		}); ok {
+			ctx.InputCC, ctx.SelectCC = gt.getPresetOptions()
+		}
+
+		// debug.Println("find cmd size:", len(ctx.Cmds))
+		// find last command which set exec func.
+		for i := len(ctx.Cmds) - 1; i >= 0; i-- {
+			cmd := ctx.Cmds[i]
+			// debug.Println("find ", cmd.Name)
+			if cmd.execFunc != nil {
+				ctx.Cur = cmd
+				// exec command
+				ctx.execCommand()
+				// // exec command func
+				// cmd.Func(ctx)
+				find = true
+				break
+			}
+		}
+	}
+
 	if !find {
-		oldCtx.Println("command set deal functions.", command)
+		if m.cc.OnNonCommand != nil {
+			err := m.cc.OnNonCommand(oldCtx, command)
+			if err != nil {
+				oldCtx.Println(err)
+			}
+		} else {
+			oldCtx.Println("command set deal functions.", command)
+		}
 	}
 }
 func (m *CommonBlockManager) ExecCommand(args []string) {
@@ -276,14 +348,17 @@ func (m *CommonBlockManager) SetPrompt(text string) {
 		},
 	}
 	m.PreWords.test = nil
-
-	return
 }
 
 // SetPromptWords update prompt string. custom display.
 func (m *CommonBlockManager) SetPromptWords(words ...*Word) {
 	if len(words) < 1 {
 		return
+	}
+	// 自动追加空格
+	last := words[len(words)-1]
+	if !strings.HasSuffix(last.Text, " ") {
+		last.Text += " "
 	}
 	m.PreWords.Words = words
 	debug.Println("update prompts words", words)

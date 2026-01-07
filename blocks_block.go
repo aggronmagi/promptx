@@ -38,7 +38,6 @@ type EmptyBlocks struct {
 func (m *EmptyBlocks) InitBlocks() {
 	// default is active status
 	m.active = true
-	return
 }
 
 // Active is blocks active
@@ -49,7 +48,6 @@ func (m *EmptyBlocks) Active() bool {
 // SetActive set active status
 func (m *EmptyBlocks) SetActive(active bool) {
 	m.active = active
-	return
 }
 
 func (m *EmptyBlocks) IsDraw(status int) bool {

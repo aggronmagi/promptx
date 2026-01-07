@@ -22,6 +22,7 @@ type CompleteOptions struct {
 	Completer                    Completer
 	CompleteMax                  int
 	CompletionFillSpace          bool
+	WordSeparator                string
 }
 
 func WithCompleteOptionSuggestionTextColor(v Color) CompleteOption {
@@ -128,6 +129,14 @@ func WithCompleteOptionCompletionFillSpace(v bool) CompleteOption {
 	}
 }
 
+func WithCompleteOptionWordSeparator(v string) CompleteOption {
+	return func(cc *CompleteOptions) CompleteOption {
+		previous := cc.WordSeparator
+		cc.WordSeparator = v
+		return WithCompleteOptionWordSeparator(previous)
+	}
+}
+
 // SetOption modify options
 func (cc *CompleteOptions) SetOption(opt CompleteOption) {
 	_ = opt(cc)
@@ -183,6 +192,7 @@ func newDefaultCompleteOptions() *CompleteOptions {
 		Completer:                    nil,
 		CompleteMax:                  5,
 		CompletionFillSpace:          false,
+		WordSeparator:                " ",
 	}
 	return cc
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/aggronmagi/promptx"
 )
@@ -21,11 +22,16 @@ func loginCommand() *promptx.Cmd {
 		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
 		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
 	).ExecFunc(func(ctx promptx.CommandContext) {
-		// 登录的服务字符串
-		ctx.CheckString(0)
-		// 输入的string
-		id := ctx.CheckString(1)
-		ctx.Println(id, "login success")
+		type LoginArgs struct {
+			Server  string
+			Account string
+		}
+		var args LoginArgs
+		if err := ctx.Bind(&args); err != nil {
+			ctx.Println("args bind error:", err)
+			return
+		}
+		ctx.Println(args.Account, "login success on", args.Server)
 		state = 1
 		//
 		ctx.SwitchCommandSet(SetArea1)
@@ -71,7 +77,18 @@ func gotoCommand() *promptx.Cmd {
 }
 
 func main() {
-	p := promptx.New()
+	p := promptx.New(
+		promptx.WithCommon(
+			promptx.WithCommonOptionOnNonCommand(func(ctx promptx.Context, command string) error {
+				if strings.Contains(strings.ToLower(command), "err") {
+					return errors.New("error command")
+				}
+				ctx.Println("non command", command)
+				return nil
+			}),
+			promptx.WithCommonOptionCommandPrefix("/"),
+		),
+	)
 	// default set
 	p.AddCommandSet(SetCommon, []*promptx.Cmd{
 		resetCommand(),
@@ -111,7 +128,8 @@ func main() {
 			return errors.New("not in " + SetArea2)
 		}
 		return nil
-	}), promptx.WithPromptStr("area2 >> "))
+	}), promptx.WithPromptStr("area2 >> "),
+	)
 	log.SetOutput(p.Stdout())
 	p.Run()
 }

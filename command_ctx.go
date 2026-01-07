@@ -15,6 +15,9 @@ import (
 //
 // The command execution function uses the ~Check...~ method provided by ~CommandContext~ to
 // get the parameters.
+//
+// It also supports strongly-typed argument binding via the ~Bind~ method.
+//
 // All Check methods, if there is no input from the user, interrupt the process through panic.
 // Or if you enter a value that does not meet expectations, the process will be interrupted
 // by panic.

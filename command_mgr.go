@@ -15,7 +15,7 @@ func newCommandManager(commander Commander) *commandManager {
 }
 
 func (m *commandManager) AddCommandSet(name string, cmds []*Cmd, opts ...CommandSetOption) {
-	if len(cmds) < 0 {
+	if len(cmds) == 0 {
 		panic(fmt.Sprintf("commandset %s do not have any commad", name))
 	}
 	if _, ok := m.sets[name]; ok {

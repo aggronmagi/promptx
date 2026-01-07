@@ -49,7 +49,6 @@ type BlocksEmacsBuffer struct {
 
 func (c *BlocksEmacsBuffer) ResetBuffer() {
 	c.buf = buffer.NewBuffer()
-	return
 }
 
 func (c *BlocksEmacsBuffer) GetBuffer() *Buffer {
