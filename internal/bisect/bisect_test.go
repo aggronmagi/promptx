@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/aggronmagi/promptx/internal/bisect"
+	"github.com/aggronmagi/promptx/v2/internal/bisect"
 )
 
 func Example() {

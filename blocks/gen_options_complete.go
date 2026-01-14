@@ -2,30 +2,34 @@
 // Exec: "gogen option -n CompleteOption -f -o gen_options_complete.go"
 // Version: 0.0.4
 
-package promptx
+package blocks
+
+import (
+	"github.com/aggronmagi/promptx/v2/output"
+)
 
 var _ = promptxCompleteOptions()
 
 // CompleteOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 type CompleteOptions struct {
-	SuggestionTextColor          Color
-	SuggestionBGColor            Color
-	SelectedSuggestionTextColor  Color
-	SelectedSuggestionBGColor    Color
-	DescriptionTextColor         Color
-	DescriptionBGColor           Color
-	SelectedDescriptionTextColor Color
-	SelectedDescriptionBGColor   Color
-	ScrollbarThumbColor          Color
-	ScrollbarBGColor             Color
+	SuggestionTextColor          output.Color
+	SuggestionBGColor            output.Color
+	SelectedSuggestionTextColor  output.Color
+	SelectedSuggestionBGColor    output.Color
+	DescriptionTextColor         output.Color
+	DescriptionBGColor           output.Color
+	SelectedDescriptionTextColor output.Color
+	SelectedDescriptionBGColor   output.Color
+	ScrollbarThumbColor          output.Color
+	ScrollbarBGColor             output.Color
 	Completer                    Completer
 	CompleteMax                  int
 	CompletionFillSpace          bool
 	WordSeparator                string
 }
 
-func WithCompleteOptionSuggestionTextColor(v Color) CompleteOption {
+func WithCompleteOptionSuggestionTextColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.SuggestionTextColor
 		cc.SuggestionTextColor = v
@@ -33,7 +37,7 @@ func WithCompleteOptionSuggestionTextColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionSuggestionBGColor(v Color) CompleteOption {
+func WithCompleteOptionSuggestionBGColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.SuggestionBGColor
 		cc.SuggestionBGColor = v
@@ -41,7 +45,7 @@ func WithCompleteOptionSuggestionBGColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionSelectedSuggestionTextColor(v Color) CompleteOption {
+func WithCompleteOptionSelectedSuggestionTextColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.SelectedSuggestionTextColor
 		cc.SelectedSuggestionTextColor = v
@@ -49,7 +53,7 @@ func WithCompleteOptionSelectedSuggestionTextColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionSelectedSuggestionBGColor(v Color) CompleteOption {
+func WithCompleteOptionSelectedSuggestionBGColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.SelectedSuggestionBGColor
 		cc.SelectedSuggestionBGColor = v
@@ -57,7 +61,7 @@ func WithCompleteOptionSelectedSuggestionBGColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionDescriptionTextColor(v Color) CompleteOption {
+func WithCompleteOptionDescriptionTextColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.DescriptionTextColor
 		cc.DescriptionTextColor = v
@@ -65,7 +69,7 @@ func WithCompleteOptionDescriptionTextColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionDescriptionBGColor(v Color) CompleteOption {
+func WithCompleteOptionDescriptionBGColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.DescriptionBGColor
 		cc.DescriptionBGColor = v
@@ -73,7 +77,7 @@ func WithCompleteOptionDescriptionBGColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionSelectedDescriptionTextColor(v Color) CompleteOption {
+func WithCompleteOptionSelectedDescriptionTextColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.SelectedDescriptionTextColor
 		cc.SelectedDescriptionTextColor = v
@@ -81,7 +85,7 @@ func WithCompleteOptionSelectedDescriptionTextColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionSelectedDescriptionBGColor(v Color) CompleteOption {
+func WithCompleteOptionSelectedDescriptionBGColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.SelectedDescriptionBGColor
 		cc.SelectedDescriptionBGColor = v
@@ -89,7 +93,7 @@ func WithCompleteOptionSelectedDescriptionBGColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionScrollbarThumbColor(v Color) CompleteOption {
+func WithCompleteOptionScrollbarThumbColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.ScrollbarThumbColor
 		cc.ScrollbarThumbColor = v
@@ -97,7 +101,7 @@ func WithCompleteOptionScrollbarThumbColor(v Color) CompleteOption {
 	}
 }
 
-func WithCompleteOptionScrollbarBGColor(v Color) CompleteOption {
+func WithCompleteOptionScrollbarBGColor(v output.Color) CompleteOption {
 	return func(cc *CompleteOptions) CompleteOption {
 		previous := cc.ScrollbarBGColor
 		cc.ScrollbarBGColor = v
@@ -179,16 +183,16 @@ var watchDogCompleteOptions func(cc *CompleteOptions)
 // newDefaultCompleteOptions new option with default value
 func newDefaultCompleteOptions() *CompleteOptions {
 	cc := &CompleteOptions{
-		SuggestionTextColor:          White,
-		SuggestionBGColor:            Cyan,
-		SelectedSuggestionTextColor:  Black,
-		SelectedSuggestionBGColor:    Turquoise,
-		DescriptionTextColor:         Black,
-		DescriptionBGColor:           Turquoise,
-		SelectedDescriptionTextColor: White,
-		SelectedDescriptionBGColor:   Cyan,
-		ScrollbarThumbColor:          DarkGray,
-		ScrollbarBGColor:             Cyan,
+		SuggestionTextColor:          output.White,
+		SuggestionBGColor:            output.Cyan,
+		SelectedSuggestionTextColor:  output.Black,
+		SelectedSuggestionBGColor:    output.Turquoise,
+		DescriptionTextColor:         output.Black,
+		DescriptionBGColor:           output.Turquoise,
+		SelectedDescriptionTextColor: output.White,
+		SelectedDescriptionBGColor:   output.Cyan,
+		ScrollbarThumbColor:          output.DarkGray,
+		ScrollbarBGColor:             output.Cyan,
 		Completer:                    nil,
 		CompleteMax:                  5,
 		CompletionFillSpace:          false,

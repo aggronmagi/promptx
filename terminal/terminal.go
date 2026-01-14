@@ -9,9 +9,9 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/aggronmagi/promptx/input"
-	"github.com/aggronmagi/promptx/internal/debug"
-	"github.com/aggronmagi/promptx/output"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
+	"github.com/aggronmagi/promptx/v2/output"
 	"go.uber.org/atomic"
 )
 

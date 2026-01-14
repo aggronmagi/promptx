@@ -1,423 +1,275 @@
 package promptx
 
 import (
-	"bytes"
 	"fmt"
+	"reflect"
 	"sort"
-	"strings"
-	"text/tabwriter"
 
-	completion "github.com/aggronmagi/promptx/completion"
-	"github.com/aggronmagi/promptx/internal/debug"
-	"github.com/spf13/pflag"
+	"github.com/aggronmagi/promptx/v2/blocks"
 )
 
-// Cmd is a shell command handler.
-//
-// NOTE: Args and Flags are mutually exclusive with SubCommands,
-// and SubCommands is used first.
-// input sequence is:
-//    command1 [subcommand ...] [arg... ] [flag ...]
-// like:
-//    query user     userid --log-lv=1
-//      |    |         |       |
-//    cmd1  sub-cmds  arg     flags
-// Args must input if it defines.
-type Cmd struct {
-	// Command name.
-	name string
-	// Command name aliases.
-	aliases []string
-	// Function to execute for the command.
-	execFunc func(c CommandContext)
-	// One liner help message for the command.
-	help string
-	// More descriptive help message for the command.
-	longHelp string
-
-	// dynamicCmdTip use for command name dynamic change.
-	// NOTE: dynamicCmdTip are mutually exclusive with Name.
-	dynamicCmdTip func(line string) []*Suggest
-
-	// subCommands. sub command.
-	subCommands []*Cmd
-
-	// args command args.
-	args []CommandParameter
-
-	children     map[string]*Cmd
-	dynamicCache []*Suggest     // dynamic cmd cache
-	set          *pflag.FlagSet // flags cache
+// Commander 自定义命令接口
+// 实现此接口可以创建自定义的命令
+type Commander interface {
+	// Name 返回命令名称
+	Name() string
+	// Help 返回命令帮助信息
+	Help() string
+	// Exec 执行命令
+	Exec(ctx blocks.Context)
 }
 
-// NewCommand Create an interactive command
-// 
-// name: command name
-// help: prompt information
-// args: command parameters
-func NewCommand(name, help string, args ...CommandParameter) *Cmd {
-	return &Cmd{
-		name: name,
-		help: help,
-		args: args,
+type rootCommandConfig struct {
+	// 命令前缀
+	commandPrefix string
+	// 非命令处理函数
+	onNonCommand func(ctx blocks.Context, command string) error
+	// 执行前检查函数
+	preCheck func(ctx blocks.Context) error
+	// Prompt 文字
+	prompt string
+	// History 文件路径（空字符串表示共享 history）
+	history string
+	// 切换时的回调函数
+	onChange func(ctx blocks.Context, args ...interface{})
+}
+
+func newRootCommandConfig() *rootCommandConfig {
+	return &rootCommandConfig{
+		onNonCommand: nil,
+		preCheck:     nil,
+		prompt:       ">>> ",
+		history:      "",
+		onChange:     nil,
 	}
 }
 
-// NewCommandWithFunc create one command
-func NewCommandWithFunc(name, help string, f func(ctx CommandContext), args ...CommandParameter) *Cmd {
-	return &Cmd{
+// Command 表示一个命令
+type Command struct {
+	// 配置
+	config *rootCommandConfig
+	// 命令名称
+	name string
+	// 命令帮助信息
+	help string
+	// 命令别名
+	aliases []string
+	// 子命令列表
+	subCommands []*Command
+	// 子命令映射表（用于快速查找）
+	children map[string]*Command
+	// 命令执行函数
+	// 统一签名：func(ctx blocks.Context, arg any)
+	// 对于泛型命令，arg 是解析后的 ARG 结构体指针
+	// 对于自定义命令，arg 是实现接口的结构体指针
+	execFunc func(ctx blocks.Context, arg any)
+	// 参数定义（用于泛型命令和自定义命令）
+	argDefs []*ArgDef
+	// 参数类型 新建参数结构体的反射类型, 保存解析命令行参数的值, 传递给execFunc.
+	argType reflect.Type
+	// 是否为 Commander 类型命令
+	isCommander bool
+}
+
+// NewCommandWithFunc 创建一个新的命令（泛型方式）
+// name: 命令名称
+// help: 命令帮助信息
+// arg: 参数结构体指针（用于解析参数定义）
+// run: 命令执行函数
+func NewCommandWithFunc[ARG any](
+	name, help string,
+	run func(ctx blocks.Context, arg *ARG),
+) *Command {
+	cmd := &Command{
 		name:     name,
 		help:     help,
-		execFunc: f,
-		args:     args,
+		children: make(map[string]*Command),
 	}
+	arg := new(ARG)
+
+	// 解析参数定义
+	cmd.argDefs = parseArgDefs(arg)
+
+	// 获取 ARG 类型
+	argType := reflect.TypeOf(arg)
+	if argType.Kind() == reflect.Ptr {
+		argType = argType.Elem()
+	}
+
+	// 保存参数类型
+	cmd.argType = argType
+
+	// 生成闭包函数
+	// 注意：这里不解析参数，参数解析在 Exec 方法中统一处理
+	cmd.execFunc = func(ctx blocks.Context, arg any) {
+		if argPtr, ok := arg.(*ARG); ok {
+			run(ctx, argPtr)
+		} else {
+			panic(fmt.Sprintf("except type:%#T, got type:%#T", argType, arg))
+		}
+	}
+
+	return cmd
 }
 
-// ExecFunc Set command execution function
-//
-// see CommondContext for detail.
-func (c *Cmd) ExecFunc(f func(c CommandContext)) *Cmd {
-	c.execFunc = f
-	return c
+// NewCommandWithFuncLegacy 创建一个新的命令（泛型方式）
+// name: 命令名称
+// help: 命令帮助信息
+// arg: 参数结构体指针（用于解析参数定义）
+// run: 命令执行函数
+func NewCommandWithFuncLegacy(
+	name, help string,
+	run func(ctx blocks.Context),
+) *Command {
+	cmd := &Command{
+		name:     name,
+		help:     help,
+		children: make(map[string]*Command),
+	}
+	// 解析参数定义
+	cmd.argDefs = nil
+
+	// 保存参数类型
+	cmd.argType = reflect.TypeOf(struct{}{})
+
+	// 生成闭包函数
+	// 注意：这里不解析参数，参数解析在 Exec 方法中统一处理
+	cmd.execFunc = func(ctx blocks.Context, arg any) {
+		run(ctx)
+	}
+
+	return cmd
 }
 
-// 
-func (c *Cmd) DynamicTip(f func(line string) []*Suggest) *Cmd {
-	c.dynamicCmdTip = f
-	return c
+// NewCommand 创建一个自定义命令
+// 如果 custom 是结构体类型，会解析其字段作为参数定义
+func NewCommand(custom Commander) *Command {
+	cmd := &Command{
+		name:        custom.Name(),
+		help:        custom.Help(),
+		children:    make(map[string]*Command),
+		isCommander: true, // 标记为 Commander 类型
+	}
+
+	// 保存原始类型（包括是否是指针）
+	originalType := reflect.TypeOf(custom)
+
+	// 提取结构体类型用于解析字段
+	customValue := reflect.ValueOf(custom)
+	if customValue.Kind() == reflect.Ptr {
+		customValue = customValue.Elem()
+	}
+	structType := customValue.Type()
+
+	// 检查是否是结构体类型
+	if structType.Kind() == reflect.Struct {
+		// 创建参数实例用于解析参数定义
+		argValue := reflect.New(structType)
+
+		// 解析参数定义
+		cmd.argDefs = parseArgDefs(argValue.Interface())
+		// 保存原始类型（可能是指针）
+		cmd.argType = originalType
+	} else {
+		panic(fmt.Sprintf("except struct type, got type:%#T", structType))
+	}
+
+	// 生成执行函数
+	// 有参数，需要传递解析后的参数
+	cmd.execFunc = func(ctx blocks.Context, arg any) {
+		if argPtr, ok := arg.(Commander); ok {
+			argPtr.Exec(ctx)
+		} else {
+			panic(fmt.Sprintf("except type:%#T, got type:%#T", originalType, arg))
+		}
+	}
+
+	return cmd
 }
 
-// Aliases Set command alias
-func (c *Cmd) Aliases(aliases ...string) *Cmd {
+// Name 返回命令名称
+func (c *Command) Name() string {
+	return c.name
+}
+
+// Help 返回命令帮助信息
+func (c *Command) Help() string {
+	return c.help
+}
+
+// Aliases 设置命令别名
+func (c *Command) Aliases(aliases ...string) *Command {
 	c.aliases = aliases
 	return c
 }
-func (c *Cmd) LogHelp(long string) *Cmd {
-	c.longHelp = long
-	return c
-}
 
-// SubCommands adds cmd as a subcommand.
-func (c *Cmd) SubCommands(cmds ...*Cmd) *Cmd {
+// SubCommands 添加子命令
+func (c *Command) SubCommands(cmds ...*Command) *Command {
 	for _, cmd := range cmds {
 		c.subCommands = append(c.subCommands, cmd)
 	}
-	sort.Sort(cmdSorter(c.subCommands))
+	c.fixChildren()
 	return c
 }
 
-// DeleteSubCommand deletes cmd from subcommands.
-func (c *Cmd) DeleteSubCommand(name string) {
-	c.fixCmd()
-	if c.children == nil {
-		return
-	}
-	delete(c.children, name)
-	for i := len(c.subCommands) - 1; i >= 0; i-- {
-		if c.subCommands[i].name == name {
-			c.subCommands = append(c.subCommands[:i], c.subCommands[i+1:]...)
-			break
-		}
-	}
-}
-
-func (c *Cmd) fixCmd() {
+// fixChildren 修复子命令映射表
+func (c *Command) fixChildren() {
 	if len(c.subCommands) == len(c.children) {
 		return
 	}
-	c.children = make(map[string]*Cmd, len(c.subCommands))
-	for _, v := range c.subCommands {
+	c.children = make(map[string]*Command, len(c.subCommands))
 
-		// fix command alias
-		for k := len(v.aliases) - 1; k >= 0; k-- {
-			// contains each other will cause unexpected behavior
-			if strings.Contains(v.aliases[k], v.name) ||
-				strings.Contains(v.name, v.aliases[k]) {
-				v.aliases = append(v.aliases[:k], v.aliases[k+1:]...)
-				continue
-			}
+	for _, cmd := range c.subCommands {
+		c.children[cmd.name] = cmd
+		// 添加别名映射
+		for _, alias := range cmd.aliases {
+			c.children[alias] = cmd
 		}
+		// 递归修复子命令
+		cmd.fixChildren()
+	}
 
-		v.fixCmd()
-		c.children[v.name] = v
-	}
-	// has repeated name command
-	if len(c.subCommands) != len(c.children) {
-		c.subCommands = c.subCommands[:0]
-		for _, v := range c.children {
-			c.subCommands = append(c.subCommands, v)
-		}
-	}
-	sort.Sort(cmdSorter(c.subCommands))
+	// 排序子命令
+	sort.Slice(c.subCommands, func(i, j int) bool {
+		return c.subCommands[i].name < c.subCommands[j].name
+	})
 }
 
-// Children returns the subcommands of c.
-func (c *Cmd) Children() []*Cmd {
-	c.fixCmd()
+// Children 返回子命令列表
+func (c *Command) Children() []*Command {
+	c.fixChildren()
 	return c.subCommands
 }
 
-func (c *Cmd) hasSubcommand() bool {
-	if len(c.children) > 1 {
+// isCmd 检查名称是否匹配此命令（包括别名）
+func (c *Command) isCmd(name string) bool {
+	if c.name == name {
 		return true
 	}
-	if _, ok := c.children["help"]; !ok {
-		return true
-	}
-	return false
-}
-
-// HelpText returns the computed help of the command and its subcommands.
-func (c Cmd) HelpText() string {
-	var b bytes.Buffer
-	p := func(s ...interface{}) {
-		fmt.Fprintln(&b)
-		if len(s) > 0 {
-			fmt.Fprintln(&b, s...)
-		}
-	}
-	if c.longHelp != "" {
-		p(c.longHelp)
-	} else if c.help != "" {
-		p(c.help)
-	} else if c.name != "" {
-		p(c.name, "has no help")
-	}
-	if c.hasSubcommand() {
-		p("Commands:")
-		w := tabwriter.NewWriter(&b, 0, 4, 2, ' ', 0)
-		for _, child := range c.subCommands {
-			fmt.Fprintf(w, "\t%s\t\t\t%s\n", child.name, child.help)
-		}
-		w.Flush()
-		p()
-	}
-	return b.String()
-}
-
-func (c *Cmd) isCmd(name string) bool {
-	if c.dynamicCache != nil {
-		for _, v := range c.dynamicCache {
-			if v.Text == name {
-				return true
-			}
-		}
-	} else {
-		if c.name == name {
-			return true
-		}
-	}
-	for _, v := range c.aliases {
-		if v == name {
+	for _, alias := range c.aliases {
+		if alias == name {
 			return true
 		}
 	}
 	return false
 }
 
-// findChildCmd returns the subcommand with matching name or alias.
-func (c *Cmd) findChildCmd(name string) *Cmd {
-
-	// find perfect matches first
-	for _, cmd := range c.subCommands {
-		if cmd.isCmd(name) {
-			return cmd
-		}
-	}
-
-	return nil
+// findChildCmd 查找子命令
+func (c *Command) findChildCmd(name string) *Command {
+	c.fixChildren()
+	return c.children[name]
 }
 
-// ParseInput parse input,and check valid
-func (c *Cmd) ParseInput(line string) (cmds []*Cmd, args []string, err error) {
-	fields := strings.Fields(line)
-	father := c
-	discard := -1
-	for k, arg := range fields {
-		if cmd := father.findChildCmd(arg); cmd != nil {
-			cmds = append(cmds, cmd)
-			father = cmd
-			discard = k + 1
-			continue
-		}
-		discard = k
-		break
-	}
-	debug.Println("discard", discard)
-	if discard >= 0 {
-		fields = fields[discard:]
-	}
-	args = fields
-	return
+// hasSubcommand 检查是否有子命令
+func (c *Command) hasSubcommand() bool {
+	c.fixChildren()
+	return len(c.children) > 0
 }
 
-func (c *Cmd) FixCommandLine(line string, args []string) string {
-	fields := strings.Fields(line)
-	father := c
-	fixs := make([]string, 0, len(fields))
-	for _, arg := range fields {
-		if cmd := father.findChildCmd(arg); cmd != nil {
-			fixs = append(fixs, arg)
-			father = cmd
-			continue
-		}
-		break
-	}
-	fixs = append(fixs, args...)
-	return strings.Join(fixs, " ")
-}
-
-func (c *Cmd) buildCache(line string) {
-	if c.dynamicCmdTip == nil || c.dynamicCache != nil {
-		return
-	}
-	c.dynamicCache = c.dynamicCmdTip(line)
-	for _, s := range c.dynamicCache {
-		s.Text = c.name + " " + s.Text
+// Exec 执行命令
+// arg: 已解析的参数值（由 ExecCommand 传入）
+func (c *Command) Exec(ctx blocks.Context, arg any) {
+	if c.execFunc != nil {
+		c.execFunc(ctx, arg)
 	}
 }
-
-func (c *Cmd) suggest() *Suggest {
-	return &Suggest{
-		Text:        c.name,
-		Description: c.help,
-	}
-}
-
-// findSugest find suggest
-func (c *Cmd) findSugest(line []rune, pos int, origLine string, cmds []*Cmd) (suggest []*Suggest) {
-	// trim left space
-	line = TrimSpaceLeft(line)
-	//
-	var offset int
-	goNext := false
-	var nextCmd *Cmd
-	// match cmd completion
-	matchCmd := func(name []rune, cmd *Cmd, s *Suggest) {
-		// complete current suggest
-		if len(line) < len(name) {
-			if !completion.FuzzyMatchRunes(name, line) {
-				return
-			}
-			if s == nil {
-				s = cmd.suggest()
-			}
-			suggest = append(suggest, s)
-			offset = len(line)
-			nextCmd = cmd
-			return
-		}
-		// need find sub command or match current command
-		if !HasPrefix(line, name) {
-			return
-		}
-		cname := TrimFirstSpace(line)
-		debug.Println("check ", string(cname), string(name))
-		if !Equal(name, cname) {
-			return
-		}
-		if s == nil {
-			s = cmd.suggest()
-		}
-		if len(line) > len(name) {
-			nextCmd = cmd
-			goNext = true
-		}
-		suggest = append(suggest, s)
-		offset = len(name)
-	}
-	for _, child := range c.subCommands {
-		// command name
-		if child.dynamicCmdTip != nil {
-			child.buildCache(origLine)
-			for _, v := range child.dynamicCache {
-				matchCmd([]rune(v.Text), child, v)
-			}
-		} else if child.name != "" {
-			matchCmd([]rune(child.name), child, nil)
-		}
-		// command alias
-		// if nextCmd != child {
-		for _, alias := range child.aliases {
-			matchCmd([]rune(alias), child, &Suggest{
-				Text:        alias,
-				Description: child.help,
-			})
-		}
-		//}
-	}
-	cmds = append(cmds, c)
-	if len(suggest) == 0 {
-		if len(cmds) < 1 {
-			return
-		}
-		if len(cmds) == 1 && cmds[0].set == nil {
-			return
-		}
-
-		// lastest input chars
-		left := make([]rune, 0, len(line))
-		for _, v := range line {
-			if v == ' ' {
-				left = left[:0]
-				continue
-			}
-			left = append(left, v)
-		}
-
-		if len(left) >= 1 && left[0] != '-' {
-			return
-		}
-
-		// no more command. find args and falgs
-		set := pflag.NewFlagSet("root", pflag.ContinueOnError)
-		for k := len(cmds) - 1; k >= 0; k-- {
-			if cmds[k].set == nil {
-				continue
-			}
-			set.AddFlagSet(cmds[k].set)
-		}
-		set.VisitAll(func(f *pflag.Flag) {
-			suggest = append(suggest, &Suggest{
-				Text:        "--" + f.Name,
-				Description: f.Usage,
-			})
-			if len(left) >= 2 && left[0] == '-' && left[1] == '-' {
-			} else {
-				suggest = append(suggest, &Suggest{
-					Text:        "-" + f.Shorthand,
-					Description: f.Usage,
-				})
-			}
-		})
-		suggest = completion.FilterFuzzy(suggest, string(left), true)
-		return
-	} else if len(suggest) != 1 {
-		// find sub command completion
-		return
-	}
-	// cut current command name.try find sub commands
-	for i := offset; i < len(line); i++ {
-		if line[i] == ' ' {
-			continue
-		}
-		return nextCmd.findSugest(line[i:], len(line[i:]), origLine, cmds)
-	}
-	// match current command. find sub commands
-	if goNext {
-		return nextCmd.findSugest(nil, 0, origLine, cmds)
-	}
-
-	return
-}
-
-func (c *Cmd) FindSuggest(doc *Document) []*Suggest {
-	c.fixCmd()
-	return c.findSugest([]rune(doc.TextBeforeCursor()), doc.CursorPositionCol(), doc.Text, nil)
-}
-
-type cmdSorter []*Cmd
-
-func (c cmdSorter) Len() int           { return len(c) }
-func (c cmdSorter) Less(i, j int) bool { return c[i].name < c[j].name }
-func (c cmdSorter) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }

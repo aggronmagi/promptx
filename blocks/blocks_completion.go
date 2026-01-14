@@ -1,14 +1,17 @@
-package promptx
+package blocks
 
 import (
-	completion "github.com/aggronmagi/promptx/completion"
-	"github.com/aggronmagi/promptx/internal/debug"
-	"github.com/aggronmagi/promptx/stack"
+	buffer "github.com/aggronmagi/promptx/v2/buffer"
+	completion "github.com/aggronmagi/promptx/v2/completion"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
+	"github.com/aggronmagi/promptx/v2/output"
+	"github.com/aggronmagi/promptx/v2/stack"
 	runewidth "github.com/mattn/go-runewidth"
 )
 
 // Completer should return the suggest item from Document.
-type Completer func(in Document) []*Suggest
+type Completer func(in buffer.Document) []*completion.Suggest
 
 // CompleteOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
@@ -16,16 +19,16 @@ type Completer func(in Document) []*Suggest
 //go:generate gogen option -n CompleteOption -f -o gen_options_complete.go
 func promptxCompleteOptions() interface{} {
 	return map[string]interface{}{
-		"SuggestionTextColor":          Color(White),
-		"SuggestionBGColor":            Color(Cyan),
-		"SelectedSuggestionTextColor":  Color(Black),
-		"SelectedSuggestionBGColor":    Color(Turquoise),
-		"DescriptionTextColor":         Color(Black),
-		"DescriptionBGColor":           Color(Turquoise),
-		"SelectedDescriptionTextColor": Color(White),
-		"SelectedDescriptionBGColor":   Color(Cyan),
-		"ScrollbarThumbColor":          Color(DarkGray),
-		"ScrollbarBGColor":             Color(Cyan),
+		"SuggestionTextColor":          output.Color(output.White),
+		"SuggestionBGColor":            output.Color(output.Cyan),
+		"SelectedSuggestionTextColor":  output.Color(output.Black),
+		"SelectedSuggestionBGColor":    output.Color(output.Turquoise),
+		"DescriptionTextColor":         output.Color(output.Black),
+		"DescriptionBGColor":           output.Color(output.Turquoise),
+		"SelectedDescriptionTextColor": output.Color(output.White),
+		"SelectedDescriptionBGColor":   output.Color(output.Cyan),
+		"ScrollbarThumbColor":          output.Color(output.DarkGray),
+		"ScrollbarBGColor":             output.Color(output.Cyan),
 		"Completer":                    Completer(nil),
 		"CompleteMax":                  int(5),
 		"CompletionFillSpace":          false,
@@ -37,12 +40,12 @@ func promptxCompleteOptions() interface{} {
 type BlocksCompletion struct {
 	EmptyBlocks
 	// colors
-	previewSuggestionTextColor Color
-	previewSuggestionBGColor   Color
+	previewSuggestionTextColor output.Color
+	previewSuggestionBGColor   output.Color
 
 	Cfg *CompleteOptions
 
-	Completions *CompletionManager
+	Completions *completion.CompletionManager
 
 	init bool
 }
@@ -71,16 +74,16 @@ func (c *BlocksCompletion) InitBlocks() {
 	}
 	c.ApplyOptions()
 
-	c.BindKey(c.resetCompletion, Escape)
+	c.BindKey(c.resetCompletion, input.Escape)
 	c.BindKey(func(ctx PressContext) (exit bool) {
 		comp := c.Completions
 		if len(comp.GetSuggestions()) > 0 {
 			comp.Previous()
 		}
 		return
-	}, BackTab)
-	c.BindKey(c.tabCompletion, Tab)
-	c.BindKey(c.refreshCompletion, NotDefined)
+	}, input.BackTab)
+	c.BindKey(c.tabCompletion, input.Tab)
+	c.BindKey(c.refreshCompletion, input.Key(input.NotDefined))
 	for _, v := range emacsKeyBindings {
 		c.BindKey(c.refreshCompletion, v.Key)
 		//c.BindKey(c.resetCompletion, v.Key)
@@ -93,7 +96,7 @@ func (c *BlocksCompletion) InitBlocks() {
 		c.Completions.Reset()
 		//}
 		return
-	}, Backspace)
+	}, input.Backspace)
 	c.init = true
 }
 
@@ -174,7 +177,7 @@ func (c *BlocksCompletion) Render(ctx PrintContext, preCursor int) int {
 
 	selected := completions.Selected - completions.VerticalScroll
 	out := ctx.Writer()
-	out.SetColor(White, Cyan, false)
+	out.SetColor(output.White, output.Cyan, false)
 	for i := 0; i < windowHeight; i++ {
 		out.CursorDown(1)
 		if i == selected {
@@ -192,12 +195,12 @@ func (c *BlocksCompletion) Render(ctx PrintContext, preCursor int) int {
 		out.WriteStr(formatted[i].Description)
 
 		if isScrollThumb(i) {
-			out.SetColor(DefaultColor, c.Cfg.ScrollbarThumbColor, false)
+			out.SetColor(output.DefaultColor, c.Cfg.ScrollbarThumbColor, false)
 		} else {
-			out.SetColor(DefaultColor, c.Cfg.ScrollbarBGColor, false)
+			out.SetColor(output.DefaultColor, c.Cfg.ScrollbarBGColor, false)
 		}
 		out.WriteStr(" ")
-		out.SetColor(DefaultColor, DefaultColor, false)
+		out.SetColor(output.DefaultColor, output.DefaultColor, false)
 
 		ctx.LineWrap(cursor + width)
 		ctx.Backward(cursor+width, width)
@@ -253,7 +256,7 @@ func (c *BlocksCompletion) tabCompletion(ctx PressContext) (exit bool) {
 	return
 }
 
-func (c *BlocksCompletion) EnterSelect(buf *Buffer) (ok bool) {
+func (c *BlocksCompletion) EnterSelect(buf *buffer.Buffer) (ok bool) {
 	if !c.Active() || c.Completions == nil || buf == nil {
 		return
 	}
@@ -275,7 +278,7 @@ func (c *BlocksCompletion) EnterSelect(buf *Buffer) (ok bool) {
 	return true
 }
 
-func (c *BlocksCompletion) Update(doc *Document) {
+func (c *BlocksCompletion) Update(doc *buffer.Document) {
 	c.Completions.Update(c.Cfg.Completer(*doc))
 }
 

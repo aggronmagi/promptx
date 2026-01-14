@@ -2,376 +2,289 @@ package promptx
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
-	input "github.com/aggronmagi/promptx/input"
-	"github.com/aggronmagi/promptx/internal/debug"
-	output "github.com/aggronmagi/promptx/output"
-	"github.com/aggronmagi/promptx/terminal"
+	"github.com/aggronmagi/promptx/v2/blocks"
+	"github.com/aggronmagi/promptx/v2/buffer"
 )
 
-// PromptOptions promptx options
-// generate by https://github.com/aggronmagi/gogen/
-//
-//go:generate gogen option -n PromptOption -o gen_options_prompt.go
-func promptxPromptOptions() interface{} {
-	return map[string]interface{}{
-		// default global input options
-		"Inputs": []InputOption(nil),
-		// default global select options
-		"Selects": []SelectOption(nil),
-		// default common options. use to create default optins
-		"Common": []CommonOption(nil),
-		// default manager. if it is not nil, ignore Common.
-		"Manager": BlocksManager(nil),
-		// input
-		"Input": input.ConsoleParser(input.NewStandardInputParser()),
-		// output
-		"Output": output.ConsoleWriter(output.NewStandardOutputWriter()),
-		"Stderr": output.ConsoleWriter(output.NewStderrWriter()),
-	}
-}
+type Context = blocks.Context
 
-// CommandSetOptions command set options
-// generate by https://github.com/aggronmagi/gogen/
-//
-//go:generate gogen option -n CommandSetOption -o gen_options_commandset.go
-func promptxCommandSetOptions() interface{} {
-	return map[string]interface{}{
-		// comman set name
-		"Name": "",
-		// command set commands
-		"Cmds": []*Cmd{},
-		// Set the operation record of the current command set to persist the saved file. If not set, the history operation record will be cleared every time the command set is switched.
-		"History": "",
-		// Set the pre-detection function for all commands executed in the current command set
-		"PreCheck": (func(ctx Context) error)(nil),
-		// Set the prompt string when switching to the command set(custom word color)
-		"Prompt": []*Word{},
-		// Set the notification function when switching to the command set, args is the parameter passed by SwitchCommandSet.
-		"OnChange": func(ctx Context, args []interface{}) {},
-	}
-}
-
-// WithPromptStr Set the prompt string when switching to the command set(default color)
-func WithPromptStr(prompt string) CommandSetOption {
-	if !strings.HasSuffix(prompt, " ") {
-		prompt += " "
-	}
-	return func(cc *CommandSetOptions) CommandSetOption {
-		previous := cc.Prompt
-		cc.Prompt = []*Word{WordDefault(prompt)}
-		return WithPrompt(previous...)
-	}
-}
-
-func init() {
-	InstallCommandSetOptionsWatchDog(func(cc *CommandSetOptions) {
-		if len(cc.Prompt) < 1 {
-			cc.Prompt = append(cc.Prompt, WordDefault(">> "))
-		}
-	})
-}
-
-// Terminal core terminal operations
-type Terminal interface {
-	// EnterRawMode enter raw mode for read key press real time
-	EnterRawMode() (err error)
-	// ExitRawMode exit raw mode
-	ExitRawMode() (err error)
-	// Stdout return a wrap stdout writer. it can refersh view correct
-	Stdout() io.Writer
-	// Stderr std err
-	Stderr() io.Writer
-	// ClearScreen clears the screen.
-	ClearScreen()
-	// SetTitle set window title
-	SetTitle(title string)
-	// ClearTitle clear window title
-	ClearTitle()
-	// Print = fmt.Print
-	Print(v ...interface{})
-	// Printf = fmt.Printf
-	Printf(fmt string, v ...interface{})
-	// Println = fmt.Println
-	Println(v ...interface{})
-
-	// WPrint  print words
-	WPrint(words ...*Word)
-	// WPrintln print words and newline
-	WPrintln(words ...*Word)
-}
-
-// Interaction user-facing prompt methods
-type Interaction interface {
-	RawInput(tip string, opts ...InputOption) (result string, err error)
-	RawSelect(tip string, list []string, opts ...SelectOption) (result int)
-	RawMulSel(tip string, list []string, opts ...SelectOption) (result []int)
-}
-
-// Commander command set management and execution
-type Commander interface {
-	// Stop stop run
-	Stop()
-	// SetPrompt update prompt string. prompt will auto add space suffix.
-	SetPrompt(prompt string)
-	// SetPromptWords update prompt string. custom display.
-	SetPromptWords(words ...*Word)
-	// ResetCommands reset all command set.
-	ResetCommands(commands ...*Cmd)
-	// RemoveHistory remove from history
-	RemoveHistory(line string)
-	// AddHistory add line to history
-	AddHistory(line string)
-	// reset history file
-	ResetHistoryFile(filename string)
-	// SetCommandPreCheck check before exec *promptx.Cmd
-	SetCommandPreCheck(f func(ctx Context) error)
-	// AddCommandSet add command set,it will auto switch when first add commandset.
-	AddCommandSet(name string, cmds []*Cmd, opts ...CommandSetOption)
-	// SwitchCommandSet switch to specify commands set,args will pass to ChangeNotify func.
-	SwitchCommandSet(name string, args ...interface{})
-}
-
-// Context Run Command Context
-type Context interface {
-	Terminal
-	Interaction
-	Commander
-}
-
-type PromptMain interface {
-	Context
+type Promptx interface {
+	blocks.Context
+	blocks.Controler
+	CommandGroupSwitcher
 	Run() error
-	ExecCommand(args []string)
 }
 
-// Promptx prompt command line
-type Promptx struct {
-	// config options
-	cc *PromptOptions
-
-	// default select options
-	selectCC *SelectOptions
-	// default input options
-	inputCC *InputOptions
-	//
-	console *terminal.TerminalApp
-	//
-	mgr *commandManager
+// CommandGroupSwitcher 命令组切换接口
+type CommandGroupSwitcher interface {
+	SwitchCommandGroup(name string) error
 }
 
-var _ Context = &Promptx{}
-
-// New creates a new prompt application.
-// It is the recommended entry point for creating a promptx application.
-//
-// Example:
-//
-//	p := promptx.New(promptx.WithCommon(promptx.WithCmds(cmds...)))
-func New(opts ...PromptOption) PromptMain {
-	cc := NewPromptOptions(opts...)
-	return newPromptx(cc)
-}
-
-// newPromptx new prompt
-func newPromptx(cc *PromptOptions) *Promptx {
-	p := new(Promptx)
-	p.mgr = newCommandManager(p)
-	p.selectCC = NewSelectOptions(cc.Selects...)
-	p.inputCC = NewInputOptions(cc.Inputs...)
-	if cc.Manager == nil {
-		cc.Manager = NewDefaultBlockManger(cc.Common...)
+// SwitchCommandGroup 切换命令组
+// 通过接口判定，如果 ctx 实现了 CommandGroupSwitcher 接口则调用，否则返回错误
+func SwitchCommandGroup(ctx blocks.Context, name string) error {
+	switcher, ok := ctx.(CommandGroupSwitcher)
+	if !ok {
+		return fmt.Errorf("context does not implement CommandGroupSwitcher interface")
 	}
-	p.console = terminal.NewTerminalApp(cc.Input)
-	cc.Manager.SetWriter(cc.Output)
-	cc.Manager.SetExecContext(p)
-	cc.Manager.UpdateWinSize(cc.Input.GetWinSize())
-	p.cc = cc
+	return switcher.SwitchCommandGroup(name)
+}
+
+type DynamicAddCommander interface {
+	AddSubCommands(cmds ...*Command)
+}
+
+// AddCommand 添加命令
+func AddCommand(ctx blocks.Context, cmds ...*Command) error {
+	adder, ok := ctx.(DynamicAddCommander)
+	if !ok {
+		return fmt.Errorf("context does not implement DynamicAddCommander interface")
+	}
+	adder.AddSubCommands(cmds...)
+	return nil
+}
+
+// promptx 主入口结构
+type promptx struct {
+	// blocks application
+	blocks.Application
+	// 命令组管理
+	groups map[string]*Command
+	// 根命令（用于当前命令组）
+	root *Command
+}
+
+var _ blocks.Context = &promptx{}
+var _ CommandGroupSwitcher = &promptx{}
+var _ DynamicAddCommander = &promptx{}
+
+// New 创建新的 Promptx 实例
+func newPromptx(c *PromptxConfigs) *promptx {
+	p := &promptx{
+		groups: make(map[string]*Command),
+	}
+
+	c.common = append(c.common, blocks.WithCommonOptionExec(func(ctx blocks.Context, command string) {
+		p.execCommand(ctx, command)
+	}))
+
+	// 构建 blocks application
+	options := []blocks.BlocksOption{
+		blocks.WithInputs(c.input...),
+		blocks.WithSelects(c.selects...),
+		blocks.WithCommon(c.common...),
+	}
+	if c.manager != nil {
+		options = append(options, blocks.WithManager(c.manager))
+	}
+	if c.inputParser != nil {
+		options = append(options, blocks.WithInput(c.inputParser))
+	}
+	if c.outputWriter != nil {
+		options = append(options, blocks.WithOutput(c.outputWriter))
+	}
+	if c.stderrWriter != nil {
+		options = append(options, blocks.WithStderr(c.stderrWriter))
+	}
+	// 最后设置 context. 保证在执行命令时，ctx 是 Promptx 实例
+	options = append(options, blocks.WithContext(p))
+	// 构建 blocks application
+	p.Application = blocks.New(options...)
+
+	// 从配置中加载命令组
+	if rootCmd, ok := c.commandGroups[""]; ok {
+		p.root = rootCmd
+	}
+	for _, group := range c.commandGroups {
+		if group.config == nil {
+			group.config = newRootCommandConfig()
+		}
+		group.fixChildren()
+		p.groups[group.name] = group
+		if p.root == nil {
+			p.root = group
+		}
+	}
+
+	// 设置初始补全
+	if p.root != nil {
+		p.setupCompletion()
+	}
 
 	return p
 }
 
-// Run run prompt
-func (p *Promptx) Run() (err error) {
-	p.console.Run(p.cc.Manager)
-	debug.Println("exit root run")
-	return
-}
-
-func (p *Promptx) Stop() {
-	p.console.Stop()
-}
-
-// EnterRawMode enter raw mode for read key press real time
-func (p *Promptx) EnterRawMode() (err error) {
-	return p.console.EnterRaw()
-}
-
-// ExitRawMode exit raw mode
-func (p *Promptx) ExitRawMode() (err error) {
-	return p.console.ExitRaw()
-}
-
-// Stdout return a wrap stdout writer. it can refersh view correct
-func (p *Promptx) Stdout() io.Writer {
-	return terminal.NewWrapWriter(p.cc.Output, p.console)
-}
-
-// Stderr std err
-func (p *Promptx) Stderr() io.Writer {
-	return terminal.NewWrapWriter(p.cc.Stderr, p.console)
-}
-
-// ClearScreen clears the screen.
-func (p *Promptx) ClearScreen() {
-	out := p.cc.Output
-	out.EraseScreen()
-	out.CursorGoTo(0, 0)
-	debug.AssertNoError(out.Flush())
-}
-
-// SetTitle set title
-func (p *Promptx) SetTitle(title string) {
-	if len(title) < 1 {
+// execCommand 执行命令
+func (p *promptx) execCommand(ctx blocks.Context, command string) {
+	if len(command) == 0 {
 		return
 	}
-	out := p.cc.Output
-	out.SetTitle(title)
-	debug.AssertNoError(out.Flush())
-}
 
-// ClearTitle clear title
-func (p *Promptx) ClearTitle() {
-	out := p.cc.Output
-	out.ClearTitle()
-	debug.AssertNoError(out.Flush())
-}
+	// 执行前检查
+	if p.root.config != nil && p.root.config.preCheck != nil {
+		if err := p.root.config.preCheck(ctx); err != nil {
+			ctx.Printf("precheck failed, %v\n", err)
+			return
+		}
+	}
 
-// SetPrompt update prompt.
-func (p *Promptx) SetPrompt(prompt string) {
-	if iface, ok := p.cc.Manager.(interface {
-		SetPrompt(prompt string)
-	}); ok {
-		iface.SetPrompt(prompt)
-		// p.syncCh <- struct{}{}
+	execText := command
+	isCmd := true
+	if p.root.config != nil && p.root.config.commandPrefix != "" {
+		if !strings.HasPrefix(command, p.root.config.commandPrefix) {
+			isCmd = false
+		} else {
+			execText = command[len(p.root.config.commandPrefix):]
+			execText = strings.TrimSpace(execText)
+		}
+	}
+
+	find := false
+	if isCmd {
+		// 执行命令，返回是否找到命令
+		find = execCommand(ctx, p.root, execText)
+	}
+
+	if !find {
+		// 不是命令，调用 OnNonCommand
+		if p.root.config != nil && p.root.config.onNonCommand != nil {
+			if err := p.root.config.onNonCommand(ctx, command); err != nil {
+				ctx.Printf("%v\n", err)
+			}
+		} else {
+			ctx.Printf("command set deal functions. %s\n", command)
+		}
 	}
 }
 
-// SetPromptWords update prompt string. custom display.
-func (p *Promptx) SetPromptWords(words ...*Word) {
-	if iface, ok := p.cc.Manager.(interface {
-		SetPromptWords(words ...*Word)
+// SwitchCommandGroup 切换命令组（实现 CommandGroupSwitcher 接口）
+func (p *promptx) SwitchCommandGroup(name string) error {
+	group, ok := p.groups[name]
+	if !ok {
+		return fmt.Errorf("command group %s not found", name)
+	}
+
+	// 切换 history
+	if group.config != nil && group.config.history != "" {
+		p.ResetHistoryFile(group.config.history)
+	} else {
+		// 共享history也只和默认命令组共享.要不然命令组的history就太乱了.
+
+		// 查找默认命令组, 切换前是默认命令组，则不修改.
+		if defaultGroup, ok := p.groups[""]; ok && defaultGroup != p.root {
+			// 默认命令组有 history 文件，则切换到默认命令组的history文件.
+			if defaultGroup.config != nil {
+				p.ResetHistoryFile(defaultGroup.config.history)
+			}
+		}
+	}
+
+	// 设置 prompt
+	if group.config != nil && group.config.prompt != "" {
+		p.SetPrompt(group.config.prompt)
+	}
+
+	// 切换根命令
+	p.root = group
+
+	// 设置自动补全
+	p.setupCompletion()
+
+	// 调用切换回调
+	if group.config != nil && group.config.onChange != nil {
+		group.config.onChange(p, name)
+	}
+
+	return nil
+}
+
+// setupCompletion 设置自动补全
+func (p *promptx) setupCompletion() {
+	if p.root == nil {
+		return
+	}
+
+	// 确保子命令映射已更新
+	p.root.fixChildren()
+
+	manager := p.GetManager()
+
+	// 如果 manager 支持 ApplyOption，则设置 Completer 和 Valid
+	if mgr, ok := manager.(interface {
+		ApplyOption(opts ...blocks.CommonOption)
 	}); ok {
-		iface.SetPromptWords(words...)
+		commandPrefix := ""
+		if p.root.config != nil {
+			commandPrefix = p.root.config.commandPrefix
+		}
+
+		// 设置 WordSeparator
+		sep := " "
+		if commandPrefix != "" {
+			sep += commandPrefix
+		}
+
+		// 创建完成器
+		completer := createCompleter(p.root, commandPrefix)
+
+		// 设置 Valid 函数来验证命令
+		validFunc := func(status int, doc *buffer.Document) error {
+			// 只在 FinishStatus 时验证，NormalStatus 时不验证（除非 AlwaysCheck）
+			if status == blocks.NormalStatus {
+				return nil
+			}
+			if len(doc.Text) == 0 {
+				return nil
+			}
+			text := doc.Text
+			if commandPrefix != "" {
+				if !strings.HasPrefix(text, commandPrefix) {
+					return nil
+				}
+				text = text[len(commandPrefix):]
+				text = strings.TrimSpace(text)
+			}
+			// 解析命令检查是否存在
+			cmdCtx, err := parseCommand(p.root, text)
+			if err != nil {
+				return err
+			}
+			if cmdCtx == nil || cmdCtx.cur == nil || cmdCtx.cur == p.root {
+				return fmt.Errorf("not found command[%s]", doc.Text)
+			}
+			return nil
+		}
+
+		// 应用选项
+		mgr.ApplyOption(
+			blocks.WithCommonOptionValid(validFunc),
+			blocks.WithCommonOptionComplete(
+				blocks.WithCompleteOptionCompleter(completer),
+				blocks.WithCompleteOptionCompletionFillSpace(true),
+				blocks.WithCompleteOptionWordSeparator(sep),
+			),
+		)
 	}
 }
 
-func (p *Promptx) ExecCommand(args []string) {
-	if iface, ok := p.cc.Manager.(interface {
-		ExecCommand(args []string)
-	}); ok {
-		iface.ExecCommand(args)
-	}
+func (p *promptx) AddSubCommands(cmds ...*Command) {
+	p.root.subCommands = append(p.root.subCommands, cmds...)
+	p.root.fixChildren()
 }
 
-// ResetCommands 重置命令集合
-func (p *Promptx) ResetCommands(commands ...*Cmd) {
-	debug.Println("reset command ", len(commands))
-	if iface, ok := p.cc.Manager.(interface {
-		ResetCommands(cmds ...*Cmd)
-	}); ok {
-		iface.ResetCommands(commands...)
-	}
-}
-
-// RemoveHistory remove from history
-func (p *Promptx) RemoveHistory(line string) {
-	if iface, ok := p.cc.Manager.(interface {
-		RemoveHistory(line string)
-	}); ok {
-		iface.RemoveHistory(line)
-	}
-}
-
-// AddHistory add line to history
-func (p *Promptx) AddHistory(line string) {
-	if iface, ok := p.cc.Manager.(interface {
-		AddHistory(line string)
-	}); ok {
-		iface.AddHistory(line)
-	}
-}
-
-func (p *Promptx) ResetHistoryFile(filename string) {
-	if iface, ok := p.cc.Manager.(interface {
-		ResetHistoryFile(fname string)
-	}); ok {
-		iface.ResetHistoryFile(filename)
-	}
-}
-
-func (p *Promptx) SetCommandPreCheck(f func(ctx Context) error) {
-	if iface, ok := p.cc.Manager.(interface {
-		SetCommandPreCheck(f func(ctx Context) error)
-	}); ok {
-		iface.SetCommandPreCheck(f)
-	}
-}
-
-// AddCommandSet add command set,it will auto switch when first add commandset.
-func (p *Promptx) AddCommandSet(name string, cmds []*Cmd, opts ...CommandSetOption) {
-	p.mgr.AddCommandSet(name, cmds, opts...)
-}
-
-// SwitchCommandSet switch to specify comands set
-func (p *Promptx) SwitchCommandSet(name string, args ...interface{}) {
-	p.mgr.SwitchCommandSet(name, args...)
-}
-
-// Print = fmt.Print
-func (p *Promptx) Print(v ...interface{}) {
+// Print 打印（blocks.Application 没有此方法，需要自定义）
+func (p *promptx) Print(v ...interface{}) {
 	fmt.Fprint(p.Stdout(), v...)
 }
 
-// Printf = fmt.Printf
-func (p *Promptx) Printf(format string, v ...interface{}) {
+// Printf 格式化打印（blocks.Application 没有此方法，需要自定义）
+func (p *promptx) Printf(format string, v ...interface{}) {
 	fmt.Fprintf(p.Stdout(), format, v...)
 }
 
-// Println = fmt.Println
-func (p *Promptx) Println(v ...interface{}) {
+// Println 打印并换行（blocks.Application 没有此方法，需要自定义）
+func (p *promptx) Println(v ...interface{}) {
 	fmt.Fprintln(p.Stdout(), v...)
-}
-
-// WPrint  print words
-func (p *Promptx) WPrint(words ...*Word) {
-	out := p.cc.Output
-	for _, v := range words {
-		out.SetColor(v.TextColor, v.BGColor, v.Bold)
-		out.WriteStr(v.Text)
-	}
-	out.SetColor(DefaultColor, DefaultColor, false)
-}
-
-// WPrintln print words and newline
-func (p *Promptx) WPrintln(words ...*Word) {
-	out := p.cc.Output
-	for _, v := range words {
-		out.SetColor(v.TextColor, v.BGColor, v.Bold)
-		out.WriteStr(v.Text)
-	}
-	out.SetColor(DefaultColor, DefaultColor, false)
-	out.WriteRawStr("\n")
-}
-
-// getConsoleWriter use for custom command args checker
-func (p *Promptx) getConsoleWriter() output.ConsoleWriter {
-	return p.cc.Output
-}
-
-// getPresetOptions use for custom command args
-func (p *Promptx) getPresetOptions() (*InputOptions, *SelectOptions) {
-	return p.inputCC, p.selectCC
 }

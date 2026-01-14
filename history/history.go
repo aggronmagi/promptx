@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aggronmagi/promptx/internal/debug"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
 )
 
 // History stores the texts that are entered.

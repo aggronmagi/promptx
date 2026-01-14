@@ -1,10 +1,13 @@
-package promptx
+package blocks
 
 import (
 	"fmt"
 	"io"
 
-	"github.com/aggronmagi/promptx/internal/debug"
+	buffer "github.com/aggronmagi/promptx/v2/buffer"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
+	"github.com/aggronmagi/promptx/v2/output"
 )
 
 // InputOptions promptx options
@@ -14,36 +17,36 @@ import (
 func promptxInputOptions() interface{} {
 	return map[string]interface{}{
 		"Tip":         "",
-		"TipColor":    Color(Yellow),
-		"TipBG":       Color(DefaultColor),
+		"TipColor":    output.Color(output.Yellow),
+		"TipBG":       output.Color(output.DefaultColor),
 		"Prefix":      ">> ",
-		"PrefixColor": Color(Green),
-		"PrefixBG":    Color(DefaultColor),
-		"Valid":       (func(*Document) error)(nil),
-		"ValidColor":  Color(Red),
-		"ValidBG":     Color(DefaultColor),
+		"PrefixColor": output.Color(output.Green),
+		"PrefixBG":    output.Color(output.DefaultColor),
+		"Valid":       (func(*buffer.Document) error)(nil),
+		"ValidColor":  output.Color(output.Red),
+		"ValidBG":     output.Color(output.DefaultColor),
 		"OnFinish":    (func(input string, eof error))(nil),
-		"Finish":      Key(Enter),
-		"Cancel":      Key(ControlC),
+		"Finish":      input.Key(input.Enter),
+		"Cancel":      input.Key(input.ControlC),
 		// result display
-		"ResultText":    InputFinishTextFunc(defaultInputFinishText),
-		"ResultColor":   Color(Blue),
-		"ResultBG":      Color(DefaultColor),
-		"Default":       "",
-		"DefaultColor":  Color(Brown),
-		"DefaultBG":     Color(DefaultColor),
+		"ResultText":   InputFinishTextFunc(defaultInputFinishText),
+		"ResultColor":  output.Color(output.Blue),
+		"ResultBG":     output.Color(output.DefaultColor),
+		"Default":      "",
+		"DefaultColor": output.Color(output.Brown),
+		"DefaultBG":    output.Color(output.DefaultColor),
 	}
 }
 
 // InputFinishTextFunc modify finish text display
-type InputFinishTextFunc func(cc *InputOptions, status int, doc *Document, defaultText string) (words []*Word)
+type InputFinishTextFunc func(cc *InputOptions, status int, doc *buffer.Document, defaultText string) (words []*Word)
 
-func defaultInputFinishText(cc *InputOptions, status int, doc *Document, defaultText string) (words []*Word) {
+func defaultInputFinishText(cc *InputOptions, status int, doc *buffer.Document, defaultText string) (words []*Word) {
 
 	if status == FinishStatus {
-		words = append(words, &SuccessWord)
+		words = append(words, SuccessWord)
 	} else {
-		words = append(words, &FailureWord)
+		words = append(words, FailureWord)
 	}
 	words = append(words, &Word{
 		Text:      cc.Prefix,
@@ -92,9 +95,9 @@ func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
 			BGColor:   cc.TipBG,
 			Bold:      false,
 		})
-		m.PreWords.Words = append(m.PreWords.Words, &NewLineWord)
+		m.PreWords.Words = append(m.PreWords.Words, NewLineWord)
 	}
-	m.PreWords.Words = append(m.PreWords.Words, &AskWord)
+	m.PreWords.Words = append(m.PreWords.Words, AskWord)
 	m.PreWords.Words = append(m.PreWords.Words, &Word{
 		Text:      cc.Prefix,
 		TextColor: cc.PrefixColor,
@@ -103,7 +106,7 @@ func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
 	})
 	// 检测默认值是否有效
 	if m.cc.Default != "" {
-		doc := &Document{}
+		doc := &buffer.Document{}
 		doc.Text = m.cc.Default
 		if err := m.cc.Valid(doc); err != nil {
 			m.cc.Default = ""
@@ -140,7 +143,7 @@ func NewInputManager(cc *InputOptions) (m *InputBlockManager) {
 }
 
 // FinishCallBack  call back
-func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) bool {
+func (m *InputBlockManager) FinishCallBack(status int, buf *buffer.Buffer) bool {
 
 	if status == FinishStatus {
 		// set not draw new line
@@ -172,7 +175,7 @@ func (m *InputBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 }
 
 // PreCheckCallBack change status pre check
-func (m *InputBlockManager) PreCheckCallBack(status int, buf *Buffer) (success bool) {
+func (m *InputBlockManager) PreCheckCallBack(status int, buf *buffer.Buffer) (success bool) {
 	success = true
 	switch status {
 	case CancelStatus:
@@ -207,9 +210,9 @@ func (m *InputBlockManager) PreCheckCallBack(status int, buf *Buffer) (success b
 	return
 }
 
-func (m *InputBlockManager) BeforeEvent(ctx PressContext, key Key, in []byte) (exit bool) {
+func (m *InputBlockManager) BeforeEvent(ctx PressContext, key input.Key, in []byte) (exit bool) {
 	// first deal input char event
-	if key == NotDefined && ctx.GetBuffer() != nil {
+	if key == input.NotDefined && ctx.GetBuffer() != nil {
 		m.useDefault = false
 		ctx.GetBuffer().InsertText(string(in), false, true)
 	}

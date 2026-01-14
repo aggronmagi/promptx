@@ -1,8 +1,13 @@
-package promptx
+package blocks
 
 import (
 	"strconv"
 	"strings"
+
+	buffer "github.com/aggronmagi/promptx/v2/buffer"
+	completion "github.com/aggronmagi/promptx/v2/completion"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/output"
 )
 
 // SelectOptions promptx options
@@ -11,36 +16,36 @@ import (
 //go:generate gogen option -n SelectOption -f -o gen_options_select.go
 func promptxSelectOptions() interface{} {
 	return map[string]interface{}{
-		"Options":   []*Suggest(nil),
-		"Rows":      int(5),
-		"OnFinish":  (func(sels []int))(nil),
-		"Multi":     false,
-		"Finish":    Key(Enter),
-		"Cancel":    Key(ControlC),
-		"Tip":       "",
-		"TipColor":  Color(Yellow),
-		"TipBG":     Color(DefaultColor),
-		"ShowHelp":  false,
-		"Help":      (SelHelpTextFunc)(defaultSelHelpText),
-		"HelpColor": Color(DefaultColor),
-		"HelpBG":    Color(DefaultColor),
-		"Valid":     (func(sels []int) error)(nil),
-		"ValidColor": Color(Red),
-		"ValidBG":   Color(DefaultColor),
-		"SuggestColor":    Color(White),
-		"SuggestBG":       Color(Cyan),
-		"SelSuggestColor": Color(Black),
-		"SelSuggestBG":    Color(Turquoise),
-		"DescColor":       Color(Black),
-		"DescBG":          Color(Turquoise),
-		"SelDescColor":    Color(White),
-		"SelDescBG":       Color(Cyan),
-		"BarColor":        Color(DarkGray),
-		"BarBG":           Color(Cyan),
+		"Options":         []*completion.Suggest(nil),
+		"Rows":            int(5),
+		"OnFinish":        (func(sels []int))(nil),
+		"Multi":           false,
+		"Finish":          input.Key(input.Enter),
+		"Cancel":          input.Key(input.ControlC),
+		"Tip":             "",
+		"TipColor":        output.Color(output.Yellow),
+		"TipBG":           output.Color(output.DefaultColor),
+		"ShowHelp":        false,
+		"Help":            (SelHelpTextFunc)(defaultSelHelpText),
+		"HelpColor":       output.Color(output.DefaultColor),
+		"HelpBG":          output.Color(output.DefaultColor),
+		"Valid":           (func(sels []int) error)(nil),
+		"ValidColor":      output.Color(output.Red),
+		"ValidBG":         output.Color(output.DefaultColor),
+		"SuggestColor":    output.Color(output.White),
+		"SuggestBG":       output.Color(output.Cyan),
+		"SelSuggestColor": output.Color(output.Black),
+		"SelSuggestBG":    output.Color(output.Turquoise),
+		"DescColor":       output.Color(output.Black),
+		"DescBG":          output.Color(output.Turquoise),
+		"SelDescColor":    output.Color(output.White),
+		"SelDescBG":       output.Color(output.Cyan),
+		"BarColor":        output.Color(output.DarkGray),
+		"BarBG":           output.Color(output.Cyan),
 		"FinishText":      SelFinishTextFunc(defaultSelFinishText),
 		"ShowItem":        true,
-		"ResultColor":     Color(Blue),
-		"ResultBG":        Color(DefaultColor),
+		"ResultColor":     output.Color(output.Blue),
+		"ResultBG":        output.Color(output.DefaultColor),
 		"Defaults":        []int(nil),
 	}
 }
@@ -62,9 +67,9 @@ type SelFinishTextFunc func(cc *SelectOptions, result []int) (words []*Word)
 
 func defaultSelFinishText(cc *SelectOptions, result []int) (words []*Word) {
 	if len(result) > 0 {
-		words = append(words, &SuccessWord)
+		words = append(words, SuccessWord)
 	} else {
-		words = append(words, &FailureWord)
+		words = append(words, FailureWord)
 	}
 	words = append(words, &Word{
 		Text:      cc.Tip + " ",
@@ -116,7 +121,7 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 	m.Validate.TextColor = cc.ValidColor
 	m.Validate.BGColor = cc.ValidBG
 
-	m.PreWords.Words = append(m.PreWords.Words, &SelectWord)
+	m.PreWords.Words = append(m.PreWords.Words, SelectWord)
 	if len(cc.Tip) > 0 {
 		m.PreWords.Words = append(m.PreWords.Words, &Word{
 			Text:      cc.Tip,
@@ -140,7 +145,7 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 	if len(m.PreWords.Words) == 1 {
 		m.PreWords.Words = m.PreWords.Words[:0]
 	} else {
-		m.PreWords.Words = append(m.PreWords.Words, &NewLineWord)
+		m.PreWords.Words = append(m.PreWords.Words, NewLineWord)
 	}
 
 	m.SetCancelKey(cc.Cancel)
@@ -187,7 +192,7 @@ func NewSelectManager(cc *SelectOptions) (m *SelectBlockManager) {
 }
 
 // FinishCallBack  call back
-func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) bool {
+func (m *SelectBlockManager) FinishCallBack(status int, buf *buffer.Buffer) bool {
 	if status == FinishStatus {
 		// set not draw new line
 		m.SetChangeStatus(1)
@@ -215,7 +220,7 @@ func (m *SelectBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 }
 
 // PreCheckCallBack change status pre check
-func (m *SelectBlockManager) PreCheckCallBack(status int, buf *Buffer) (success bool) {
+func (m *SelectBlockManager) PreCheckCallBack(status int, buf *buffer.Buffer) (success bool) {
 	success = true
 	switch status {
 	case CancelStatus:

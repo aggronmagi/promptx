@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/aggronmagi/promptx/input"
-	"github.com/aggronmagi/promptx/internal/debug"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
 )
 
 func (t *TerminalApp) handleSignals(exitCh chan int, winSizeCh chan *input.WinSize, stop chan struct{}) {

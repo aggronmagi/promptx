@@ -5,7 +5,7 @@ package input
 import (
 	"syscall"
 
-	"github.com/aggronmagi/promptx/internal/term"
+	"github.com/aggronmagi/promptx/v2/internal/term"
 	"golang.org/x/sys/unix"
 )
 

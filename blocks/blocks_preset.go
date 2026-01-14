@@ -1,8 +1,9 @@
-package promptx
+package blocks
 
 import (
 	"strings"
 
+	"github.com/aggronmagi/promptx/v2/output"
 	runewidth "github.com/mattn/go-runewidth"
 )
 
@@ -11,8 +12,8 @@ type Word struct {
 	// content
 	Text string
 	// colors
-	TextColor Color
-	BGColor   Color
+	TextColor output.Color
+	BGColor   output.Color
 	// bold font
 	Bold bool
 }
@@ -36,7 +37,7 @@ func (w *Word) Render(ctx PrintContext, preCursor int) (nextCursor int) {
 	out := ctx.Writer()
 	out.SetColor(w.TextColor, w.BGColor, w.Bold)
 	out.WriteStr(w.Text)
-	out.SetColor(DefaultColor, DefaultColor, false)
+	out.SetColor(output.DefaultColor, output.DefaultColor, false)
 	// last one is '\n',backword text
 	if len(list[len(list)-1]) == 0 {
 		out.CursorBackward(ctx.Columns())
@@ -45,19 +46,19 @@ func (w *Word) Render(ctx PrintContext, preCursor int) (nextCursor int) {
 	return
 }
 
-
 // WordDefault color text
 func WordDefault(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: DefaultColor,
+		TextColor: output.DefaultColor,
 	}
 }
+
 // WordBlue color text
 func WordBlue(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: Blue,
+		TextColor: output.Blue,
 	}
 }
 
@@ -65,7 +66,7 @@ func WordBlue(str string) *Word {
 func WordBrown(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: Brown,
+		TextColor: output.Brown,
 	}
 }
 
@@ -73,7 +74,7 @@ func WordBrown(str string) *Word {
 func WordCyan(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: Cyan,
+		TextColor: output.Cyan,
 	}
 }
 
@@ -81,7 +82,7 @@ func WordCyan(str string) *Word {
 func WordGreen(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: Green,
+		TextColor: output.Green,
 	}
 }
 
@@ -89,7 +90,7 @@ func WordGreen(str string) *Word {
 func WordPurple(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: Purple,
+		TextColor: output.Purple,
 	}
 }
 
@@ -97,7 +98,7 @@ func WordPurple(str string) *Word {
 func WordRed(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: Red,
+		TextColor: output.Red,
 	}
 }
 
@@ -105,7 +106,7 @@ func WordRed(str string) *Word {
 func WordTurquoise(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: Turquoise,
+		TextColor: output.Turquoise,
 	}
 }
 
@@ -113,7 +114,7 @@ func WordTurquoise(str string) *Word {
 func WordWhite(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: White,
+		TextColor: output.White,
 	}
 }
 
@@ -121,41 +122,41 @@ func WordWhite(str string) *Word {
 func WordYellow(str string) *Word {
 	return &Word{
 		Text:      str,
-		TextColor: Yellow,
+		TextColor: output.Yellow,
 	}
 }
 
 // preset word for display select,input prefix word.
 var (
 	// SuccessWord success word
-	SuccessWord = Word{
+	SuccessWord = &Word{
 		Text:      "✔ ",
-		TextColor: Green,
-		BGColor:   DefaultColor,
+		TextColor: output.Green,
+		BGColor:   output.DefaultColor,
 		Bold:      false,
 	}
 	// FailureWord failure word
-	FailureWord = Word{
+	FailureWord = &Word{
 		Text:      "✗ ",
-		TextColor: Red,
-		BGColor:   DefaultColor,
+		TextColor: output.Red,
+		BGColor:   output.DefaultColor,
 		Bold:      false,
 	}
-	AskWord = Word{
+	AskWord = &Word{
 		Text:      "? ",
-		TextColor: Blue,
-		BGColor:   DefaultColor,
+		TextColor: output.Blue,
+		BGColor:   output.DefaultColor,
 		Bold:      false,
 	}
-	SelectWord = Word{
+	SelectWord = &Word{
 		Text:      "▸ ",
-		TextColor: DefaultColor,
-		BGColor:   DefaultColor,
+		TextColor: output.DefaultColor,
+		BGColor:   output.DefaultColor,
 		Bold:      false,
 	}
-	NewLineWord = Word{
+	NewLineWord = &Word{
 		Text:      "\n",
-		TextColor: 0,
+		TextColor: output.DefaultColor,
 		BGColor:   0,
 		Bold:      false,
 	}
@@ -185,8 +186,8 @@ type BlocksPrefix struct {
 	// context
 	Text string
 	// colors
-	TextColor Color
-	BGColor   Color
+	TextColor output.Color
+	BGColor   output.Color
 	Words     []*Word
 }
 
@@ -201,7 +202,7 @@ func (c *BlocksPrefix) Render(ctx PrintContext, preCursor int) int {
 	out := ctx.Writer()
 	out.SetColor(c.TextColor, c.BGColor, false)
 	out.WriteStr(c.Text)
-	out.SetColor(DefaultColor, DefaultColor, false)
+	out.SetColor(output.DefaultColor, output.DefaultColor, false)
 	return runewidth.StringWidth(c.Text) + preCursor
 }
 
@@ -211,8 +212,8 @@ type BlocksSuffix struct {
 	// context
 	Text string
 	// colors
-	TextColor Color
-	BGColor   Color
+	TextColor output.Color
+	BGColor   output.Color
 }
 
 // Render render to console
@@ -231,7 +232,7 @@ func (c *BlocksSuffix) Render(ctx PrintContext, preCursor int) int {
 	out := ctx.Writer()
 	out.SetColor(c.TextColor, c.BGColor, false)
 	out.WriteStr(c.Text + "\n")
-	out.SetColor(DefaultColor, DefaultColor, false)
+	out.SetColor(output.DefaultColor, output.DefaultColor, false)
 	// backward cursor
 	out.CursorBackward(col)
 	return newCursor
@@ -244,8 +245,8 @@ type BlocksNewLine struct {
 	// context
 	Text string
 	// colors
-	TextColor Color
-	BGColor   Color
+	TextColor output.Color
+	BGColor   output.Color
 }
 
 // Render render to console
@@ -275,7 +276,7 @@ func (c *BlocksNewLine) Render(ctx PrintContext, preCursor int) int {
 	// }
 	out.SetColor(c.TextColor, c.BGColor, false)
 	out.WriteStr(c.Text)
-	out.SetColor(DefaultColor, DefaultColor, false)
+	out.SetColor(output.DefaultColor, output.DefaultColor, false)
 	// // backward cursor
 	// out.CursorBackward(col)
 

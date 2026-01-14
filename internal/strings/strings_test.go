@@ -3,7 +3,7 @@ package strings_test
 import (
 	"fmt"
 
-	"github.com/aggronmagi/promptx/internal/strings"
+	"github.com/aggronmagi/promptx/v2/internal/strings"
 )
 
 func ExampleIndexNotByte() {

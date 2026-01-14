@@ -1,24 +1,26 @@
-package promptx
+package blocks
 
 import (
 	"reflect"
 	"testing"
+
+	completion "github.com/aggronmagi/promptx/v2/completion"
 )
 
 func TestFormatShortSuggestion(t *testing.T) {
 	var scenarioTable = []struct {
-		in       []*Suggest
-		expected []*Suggest
+		in       []*completion.Suggest
+		expected []*completion.Suggest
 		max      int
 		exWidth  int
 	}{
 		{
-			in: []*Suggest{
+			in: []*completion.Suggest{
 				{Text: "foo"},
 				{Text: "bar"},
 				{Text: "fuga"},
 			},
-			expected: []*Suggest{
+			expected: []*completion.Suggest{
 				{Text: " foo  "},
 				{Text: " bar  "},
 				{Text: " fuga "},
@@ -27,12 +29,12 @@ func TestFormatShortSuggestion(t *testing.T) {
 			exWidth: 6,
 		},
 		{
-			in: []*Suggest{
+			in: []*completion.Suggest{
 				{Text: "apple", Description: "This is apple."},
 				{Text: "banana", Description: "This is banana."},
 				{Text: "coconut", Description: "This is coconut."},
 			},
-			expected: []*Suggest{
+			expected: []*completion.Suggest{
 				{Text: " apple   ", Description: " This is apple.   "},
 				{Text: " banana  ", Description: " This is banana.  "},
 				{Text: " coconut ", Description: " This is coconut. "},
@@ -41,12 +43,12 @@ func TestFormatShortSuggestion(t *testing.T) {
 			exWidth: len(" apple   " + " This is apple.   "),
 		},
 		{
-			in: []*Suggest{
+			in: []*completion.Suggest{
 				{Text: "This is apple."},
 				{Text: "This is banana."},
 				{Text: "This is coconut."},
 			},
-			expected: []*Suggest{
+			expected: []*completion.Suggest{
 				{Text: " Thi... "},
 				{Text: " Thi... "},
 				{Text: " Thi... "},
@@ -55,17 +57,17 @@ func TestFormatShortSuggestion(t *testing.T) {
 			exWidth: 8,
 		},
 		{
-			in: []*Suggest{
+			in: []*completion.Suggest{
 				{Text: "This is apple."},
 				{Text: "This is banana."},
 				{Text: "This is coconut."},
 			},
-			expected: []*Suggest(nil),
+			expected: []*completion.Suggest(nil),
 			max:      3,
 			exWidth:  0,
 		},
 		{
-			in: []*Suggest{
+			in: []*completion.Suggest{
 				{Text: "--all-namespaces", Description: "-------------------------------------------------------------------------------------------------------------------------------------------"},
 				{Text: "--allow-missing-template-keys", Description: "-----------------------------------------------------------------------------------------------------------------------------------------------"},
 				{Text: "--export", Description: "----------------------------------------------------------------------------------------------------------"},
@@ -73,7 +75,7 @@ func TestFormatShortSuggestion(t *testing.T) {
 				{Text: "--filename", Description: "-----------------------------------------------------------------------------------"},
 				{Text: "--include-extended-apis", Description: "------------------------------------------------------------------------------------"},
 			},
-			expected: []*Suggest{
+			expected: []*completion.Suggest{
 				{Text: " --all-namespaces              ", Description: " --------------... "},
 				{Text: " --allow-missing-template-keys ", Description: " --------------... "},
 				{Text: " --export                      ", Description: " --------------... "},
@@ -85,7 +87,7 @@ func TestFormatShortSuggestion(t *testing.T) {
 			exWidth: len(" --include-extended-apis       " + " ---------------..."),
 		},
 		{
-			in: []*Suggest{
+			in: []*completion.Suggest{
 				{Text: "--all-namespaces", Description: "If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace."},
 				{Text: "--allow-missing-template-keys", Description: "If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats."},
 				{Text: "--export", Description: "If true, use 'export' for the resources.  Exported resources are stripped of cluster-specific information."},
@@ -93,7 +95,7 @@ func TestFormatShortSuggestion(t *testing.T) {
 				{Text: "--filename", Description: "Filename, directory, or URL to files identifying the resource to get from a server."},
 				{Text: "--include-extended-apis", Description: "If true, include definitions of new APIs via calls to the API server. [default true]"},
 			},
-			expected: []*Suggest{
+			expected: []*completion.Suggest{
 				{Text: " --all-namespaces              ", Description: " If present, list the requested object(s) across all namespaces. Namespace in current context is ignored even if specified with --namespace.     "},
 				{Text: " --allow-missing-template-keys ", Description: " If true, ignore any errors in templates when a field or map key is missing in the template. Only applies to golang and jsonpath output formats. "},
 				{Text: " --export                      ", Description: " If true, use 'export' for the resources.  Exported resources are stripped of cluster-specific information.                                      "},

@@ -1,15 +1,18 @@
-package promptx
+package blocks
 
 import (
 	"runtime"
 
-	"github.com/aggronmagi/promptx/internal/debug"
+	buffer "github.com/aggronmagi/promptx/v2/buffer"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
+	"github.com/aggronmagi/promptx/v2/output"
 	"go.uber.org/atomic"
 )
 
 type BlocksManager interface {
 	// Setup to initialize console output.
-	Setup(size *WinSize)
+	Setup(size *input.WinSize)
 	// TearDown to clear title and erasing.
 	TearDown()
 
@@ -17,9 +20,9 @@ type BlocksManager interface {
 	ExitSign(code int)
 
 	// SetWriter set console writer
-	SetWriter(out ConsoleWriter)
+	SetWriter(out output.ConsoleWriter)
 	// Writer get console writer interface
-	Writer() ConsoleWriter
+	Writer() output.ConsoleWriter
 	// SetChangeStatus  change mode status
 	//
 	// 0: not change(default value)
@@ -29,14 +32,14 @@ type BlocksManager interface {
 	ChangeStatus()
 
 	// UpdateWinSize called when window size is changed.
-	UpdateWinSize(size *WinSize)
+	UpdateWinSize(size *input.WinSize)
 	// Columns return console window col count
 	Columns() int
 	// Rows return console window row count
 	Rows() int
 
 	// Event deal console key press
-	Event(key Key, in []byte) (exit bool)
+	Event(key input.Key, in []byte) (exit bool)
 	// Render renders to the console.
 	Render(status int)
 	// clear blocks last render
@@ -52,21 +55,21 @@ type BlocksManager interface {
 
 var _ BlocksManager = &BlocksBaseManager{}
 
-type EventCall func(ctx PressContext, key Key, in []byte) (exit bool)
+type EventCall func(ctx PressContext, key input.Key, in []byte) (exit bool)
 
 // BlocksBaseManager manage some blocks to merge self view
 type BlocksBaseManager struct {
 	// console writer
-	out ConsoleWriter
+	out output.ConsoleWriter
 
 	//
 	eventBefore EventCall
 	eventBehind EventCall
 	// action config
-	cancelKey Key
-	finishKey Key
-	preCheck  func(status int, doc *Buffer) bool
-	callback  func(status int, doc *Buffer) bool
+	cancelKey input.Key
+	finishKey input.Key
+	preCheck  func(status int, doc *buffer.Buffer) bool
+	callback  func(status int, doc *buffer.Buffer) bool
 	// cancel key touch auto exit
 	cancelNotExit bool
 
@@ -116,12 +119,12 @@ func (m *BlocksBaseManager) SetChangeStatus(st int) {
 }
 
 // SetCancelKey set cancel key
-func (m *BlocksBaseManager) SetCancelKey(k Key) {
+func (m *BlocksBaseManager) SetCancelKey(k input.Key) {
 	m.cancelKey = k
 }
 
 // SetFinishKey set finish key press
-func (m *BlocksBaseManager) SetFinishKey(k Key) {
+func (m *BlocksBaseManager) SetFinishKey(k input.Key) {
 	m.finishKey = k
 }
 
@@ -129,17 +132,17 @@ func (m *BlocksBaseManager) SetFinishKey(k Key) {
 // its arg status is CancelStatus or FinishStatus
 // return true will call callback function later,
 // otherwise render normal
-func (m *BlocksBaseManager) SetPreCheck(f func(status int, doc *Buffer) bool) {
+func (m *BlocksBaseManager) SetPreCheck(f func(status int, doc *buffer.Buffer) bool) {
 	m.preCheck = f
 }
 
 // SetCallBack set call back notify
-func (m *BlocksBaseManager) SetCallBack(f func(status int, doc *Buffer) bool) {
+func (m *BlocksBaseManager) SetCallBack(f func(status int, doc *buffer.Buffer) bool) {
 	m.callback = f
 }
 
 // Setup to initialize console output.
-func (m *BlocksBaseManager) Setup(size *WinSize) {
+func (m *BlocksBaseManager) Setup(size *input.WinSize) {
 	// if title != "" {
 	// 	m.out.SetTitle(title)
 	// 	debug.AssertNoError(m.out.Flush())
@@ -164,12 +167,12 @@ func (m *BlocksBaseManager) ExitSign(code int) {
 	m.Render(CancelStatus)
 }
 
-func (m *BlocksBaseManager) SetWriter(out ConsoleWriter) {
+func (m *BlocksBaseManager) SetWriter(out output.ConsoleWriter) {
 	m.out = out
 }
 
 // Writer get console writer interface
-func (m *BlocksBaseManager) Writer() ConsoleWriter {
+func (m *BlocksBaseManager) Writer() output.ConsoleWriter {
 	return m.out
 }
 
@@ -201,7 +204,7 @@ func (m *BlocksBaseManager) IsInTask() bool {
 }
 
 // Event deal console key press
-func (m *BlocksBaseManager) Event(key Key, in []byte) (exit bool) {
+func (m *BlocksBaseManager) Event(key input.Key, in []byte) (exit bool) {
 	m.inTask.Store(true)
 	defer m.inTask.Store(false)
 	var ctx pressContext
@@ -291,17 +294,17 @@ func (m *BlocksBaseManager) Event(key Key, in []byte) (exit bool) {
 }
 
 // OnEventBefore deal console key press
-func (m *BlocksBaseManager) OnEventBefore(ctx PressContext, key Key, in []byte) (exit bool) {
+func (m *BlocksBaseManager) OnEventBefore(ctx PressContext, key input.Key, in []byte) (exit bool) {
 	return
 }
 
 // OnEventBehind deal console key press
-func (m *BlocksBaseManager) OnEventBehind(ctx PressContext, key Key, in []byte) (exit bool) {
+func (m *BlocksBaseManager) OnEventBehind(ctx PressContext, key input.Key, in []byte) (exit bool) {
 	return
 }
 
 // UpdateWinSize called when window size is changed.
-func (m *BlocksBaseManager) UpdateWinSize(size *WinSize) {
+func (m *BlocksBaseManager) UpdateWinSize(size *input.WinSize) {
 	m.row = size.Row
 	m.col = size.Col
 }
@@ -468,7 +471,7 @@ func (m *BlocksBaseManager) LineWrap(cursor int) {
 func (m *BlocksBaseManager) renderWindowTooSmall() {
 	m.out.CursorGoTo(0, 0)
 	m.out.EraseScreen()
-	m.out.SetColor(DarkRed, White, false)
+	m.out.SetColor(output.DarkRed, output.White, false)
 	m.out.WriteStr("Your console window is too small...")
 }
 
@@ -481,4 +484,3 @@ func (m *BlocksBaseManager) PrepareArea(lines int) {
 		m.out.ScrollUp()
 	}
 }
-

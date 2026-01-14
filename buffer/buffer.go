@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/aggronmagi/promptx/internal/debug"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
 )
 
 // Buffer emulates the console buffer.

@@ -4,7 +4,7 @@
 
 package promptx
 
-import output "github.com/aggronmagi/promptx/output"
+import output "github.com/aggronmagi/promptx/v2/output"
 
 // Color represents color on terminal.
 type Color = output.Color

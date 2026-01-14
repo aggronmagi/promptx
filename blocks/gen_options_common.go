@@ -2,7 +2,13 @@
 // Exec: "gogen option -n CommonOption -f -o gen_options_common.go"
 // Version: 0.0.4
 
-package promptx
+package blocks
+
+import (
+	"github.com/aggronmagi/promptx/v2/buffer"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/output"
+)
 
 var _ = promptxCommonOptions()
 
@@ -10,24 +16,20 @@ var _ = promptxCommonOptions()
 // generate by https://github.com/aggronmagi/gogen/
 type CommonOptions struct {
 	Tip         string
-	TipColor    Color
-	TipBG       Color
+	TipColor    output.Color
+	TipBG       output.Color
 	Prefix      string
-	PrefixColor Color
-	PrefixBG    Color
+	PrefixColor output.Color
+	PrefixBG    output.Color
 	// check input valid
-	Valid      func(status int, in *Document) error
-	ValidColor Color
-	ValidBG    Color
+	Valid      func(status int, in *buffer.Document) error
+	ValidColor output.Color
+	ValidBG    output.Color
 	// exec input command
 	Exec     func(ctx Context, command string)
-	Finish   Key
-	Cancel   Key
+	Finish   input.Key
+	Cancel   input.Key
 	Complete []CompleteOption
-	// if command slice size > 0. it will ignore Exec and Valid options
-	Cmds []*Cmd
-	// alway check input command
-	AlwaysCheck bool
 	// history file
 	History string
 	// maximum history size
@@ -38,12 +40,6 @@ type CommonOptions struct {
 	HistoryDedup bool
 	// record timestamps
 	HistoryTimestamp bool
-	// OnNonCommand deal with non command input
-	OnNonCommand func(ctx Context, command string) error
-	// CommandPrefix command prefix. example '/'
-	CommandPrefix string
-	// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
-	PreCheck func(ctx Context) error
 }
 
 func WithCommonOptionTip(v string) CommonOption {
@@ -54,7 +50,7 @@ func WithCommonOptionTip(v string) CommonOption {
 	}
 }
 
-func WithCommonOptionTipColor(v Color) CommonOption {
+func WithCommonOptionTipColor(v output.Color) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.TipColor
 		cc.TipColor = v
@@ -62,7 +58,7 @@ func WithCommonOptionTipColor(v Color) CommonOption {
 	}
 }
 
-func WithCommonOptionTipBG(v Color) CommonOption {
+func WithCommonOptionTipBG(v output.Color) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.TipBG
 		cc.TipBG = v
@@ -78,7 +74,7 @@ func WithCommonOptionPrefix(v string) CommonOption {
 	}
 }
 
-func WithCommonOptionPrefixColor(v Color) CommonOption {
+func WithCommonOptionPrefixColor(v output.Color) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.PrefixColor
 		cc.PrefixColor = v
@@ -86,7 +82,7 @@ func WithCommonOptionPrefixColor(v Color) CommonOption {
 	}
 }
 
-func WithCommonOptionPrefixBG(v Color) CommonOption {
+func WithCommonOptionPrefixBG(v output.Color) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.PrefixBG
 		cc.PrefixBG = v
@@ -95,7 +91,7 @@ func WithCommonOptionPrefixBG(v Color) CommonOption {
 }
 
 // check input valid
-func WithCommonOptionValid(v func(status int, in *Document) error) CommonOption {
+func WithCommonOptionValid(v func(status int, in *buffer.Document) error) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.Valid
 		cc.Valid = v
@@ -103,7 +99,7 @@ func WithCommonOptionValid(v func(status int, in *Document) error) CommonOption 
 	}
 }
 
-func WithCommonOptionValidColor(v Color) CommonOption {
+func WithCommonOptionValidColor(v output.Color) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.ValidColor
 		cc.ValidColor = v
@@ -111,7 +107,7 @@ func WithCommonOptionValidColor(v Color) CommonOption {
 	}
 }
 
-func WithCommonOptionValidBG(v Color) CommonOption {
+func WithCommonOptionValidBG(v output.Color) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.ValidBG
 		cc.ValidBG = v
@@ -128,7 +124,7 @@ func WithCommonOptionExec(v func(ctx Context, command string)) CommonOption {
 	}
 }
 
-func WithCommonOptionFinish(v Key) CommonOption {
+func WithCommonOptionFinish(v input.Key) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.Finish
 		cc.Finish = v
@@ -136,7 +132,7 @@ func WithCommonOptionFinish(v Key) CommonOption {
 	}
 }
 
-func WithCommonOptionCancel(v Key) CommonOption {
+func WithCommonOptionCancel(v input.Key) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.Cancel
 		cc.Cancel = v
@@ -152,24 +148,6 @@ func WithCommonOptionComplete(v ...CompleteOption) CommonOption {
 	}
 }
 
-// if command slice size > 0. it will ignore Exec and Valid options
-func WithCommonOptionCmds(v ...*Cmd) CommonOption {
-	return func(cc *CommonOptions) CommonOption {
-		previous := cc.Cmds
-		cc.Cmds = v
-		return WithCommonOptionCmds(previous...)
-	}
-}
-
-// alway check input command
-func WithCommonOptionAlwaysCheck(v bool) CommonOption {
-	return func(cc *CommonOptions) CommonOption {
-		previous := cc.AlwaysCheck
-		cc.AlwaysCheck = v
-		return WithCommonOptionAlwaysCheck(previous)
-	}
-}
-
 // history file
 func WithCommonOptionHistory(v string) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
@@ -179,6 +157,7 @@ func WithCommonOptionHistory(v string) CommonOption {
 	}
 }
 
+// maximum history size
 func WithCommonOptionHistoryMaxSize(v int) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.HistoryMaxSize
@@ -187,6 +166,7 @@ func WithCommonOptionHistoryMaxSize(v int) CommonOption {
 	}
 }
 
+// ignore consecutive duplicates
 func WithCommonOptionHistoryIgnoreDups(v bool) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.HistoryIgnoreDups
@@ -195,6 +175,7 @@ func WithCommonOptionHistoryIgnoreDups(v bool) CommonOption {
 	}
 }
 
+// global deduplication
 func WithCommonOptionHistoryDedup(v bool) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.HistoryDedup
@@ -203,36 +184,12 @@ func WithCommonOptionHistoryDedup(v bool) CommonOption {
 	}
 }
 
+// record timestamps
 func WithCommonOptionHistoryTimestamp(v bool) CommonOption {
 	return func(cc *CommonOptions) CommonOption {
 		previous := cc.HistoryTimestamp
 		cc.HistoryTimestamp = v
 		return WithCommonOptionHistoryTimestamp(previous)
-	}
-}
-
-func WithCommonOptionOnNonCommand(v func(ctx Context, command string) error) CommonOption {
-	return func(cc *CommonOptions) CommonOption {
-		previous := cc.OnNonCommand
-		cc.OnNonCommand = v
-		return WithCommonOptionOnNonCommand(previous)
-	}
-}
-
-func WithCommonOptionCommandPrefix(v string) CommonOption {
-	return func(cc *CommonOptions) CommonOption {
-		previous := cc.CommandPrefix
-		cc.CommandPrefix = v
-		return WithCommonOptionCommandPrefix(previous)
-	}
-}
-
-// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
-func WithCommonOptionPreCheck(v func(ctx Context) error) CommonOption {
-	return func(cc *CommonOptions) CommonOption {
-		previous := cc.PreCheck
-		cc.PreCheck = v
-		return WithCommonOptionPreCheck(previous)
 	}
 }
 
@@ -278,29 +235,24 @@ var watchDogCommonOptions func(cc *CommonOptions)
 // newDefaultCommonOptions new option with default value
 func newDefaultCommonOptions() *CommonOptions {
 	cc := &CommonOptions{
-		Tip:         "",
-		TipColor:    Yellow,
-		TipBG:       DefaultColor,
-		Prefix:      ">>> ",
-		PrefixColor: Green,
-		PrefixBG:    DefaultColor,
-		Valid:       nil,
-		ValidColor:  Red,
-		ValidBG:     DefaultColor,
-		Exec:        nil,
-		Finish:      Enter,
-		Cancel:      ControlC,
-		Complete:    nil,
-		Cmds:        nil,
-		AlwaysCheck: false,
-		History:     "",
+		Tip:               "",
+		TipColor:          output.Yellow,
+		TipBG:             output.DefaultColor,
+		Prefix:            ">>> ",
+		PrefixColor:       output.Green,
+		PrefixBG:          output.DefaultColor,
+		Valid:             nil,
+		ValidColor:        output.Red,
+		ValidBG:           output.DefaultColor,
+		Exec:              nil,
+		Finish:            input.Enter,
+		Cancel:            input.ControlC,
+		Complete:          nil,
+		History:           "",
 		HistoryMaxSize:    10000,
 		HistoryIgnoreDups: true,
 		HistoryDedup:      false,
 		HistoryTimestamp:  false,
-		OnNonCommand:      nil,
-		CommandPrefix:     "",
-		PreCheck:    nil,
 	}
 	return cc
 }

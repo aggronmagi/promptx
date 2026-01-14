@@ -2,7 +2,13 @@
 // Exec: "gogen option -n InputOption -f -o gen_options_input.go"
 // Version: 0.0.4
 
-package promptx
+package blocks
+
+import (
+	"github.com/aggronmagi/promptx/v2/buffer"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/output"
+)
 
 var _ = promptxInputOptions()
 
@@ -10,24 +16,24 @@ var _ = promptxInputOptions()
 // generate by https://github.com/aggronmagi/gogen/
 type InputOptions struct {
 	Tip         string
-	TipColor    Color
-	TipBG       Color
+	TipColor    output.Color
+	TipBG       output.Color
 	Prefix      string
-	PrefixColor Color
-	PrefixBG    Color
-	Valid       func(*Document) error
-	ValidColor  Color
-	ValidBG     Color
+	PrefixColor output.Color
+	PrefixBG    output.Color
+	Valid       func(*buffer.Document) error
+	ValidColor  output.Color
+	ValidBG     output.Color
 	OnFinish    func(input string, eof error)
-	Finish      Key
-	Cancel      Key
+	Finish      input.Key
+	Cancel      input.Key
 	// result display
 	ResultText   InputFinishTextFunc
-	ResultColor  Color
-	ResultBG     Color
+	ResultColor  output.Color
+	ResultBG     output.Color
 	Default      string
-	DefaultColor Color
-	DefaultBG    Color
+	DefaultColor output.Color
+	DefaultBG    output.Color
 }
 
 func WithInputOptionTip(v string) InputOption {
@@ -38,7 +44,7 @@ func WithInputOptionTip(v string) InputOption {
 	}
 }
 
-func WithInputOptionTipColor(v Color) InputOption {
+func WithInputOptionTipColor(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.TipColor
 		cc.TipColor = v
@@ -46,7 +52,7 @@ func WithInputOptionTipColor(v Color) InputOption {
 	}
 }
 
-func WithInputOptionTipBG(v Color) InputOption {
+func WithInputOptionTipBG(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.TipBG
 		cc.TipBG = v
@@ -62,7 +68,7 @@ func WithInputOptionPrefix(v string) InputOption {
 	}
 }
 
-func WithInputOptionPrefixColor(v Color) InputOption {
+func WithInputOptionPrefixColor(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.PrefixColor
 		cc.PrefixColor = v
@@ -70,7 +76,7 @@ func WithInputOptionPrefixColor(v Color) InputOption {
 	}
 }
 
-func WithInputOptionPrefixBG(v Color) InputOption {
+func WithInputOptionPrefixBG(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.PrefixBG
 		cc.PrefixBG = v
@@ -78,7 +84,7 @@ func WithInputOptionPrefixBG(v Color) InputOption {
 	}
 }
 
-func WithInputOptionValid(v func(*Document) error) InputOption {
+func WithInputOptionValid(v func(*buffer.Document) error) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.Valid
 		cc.Valid = v
@@ -86,7 +92,7 @@ func WithInputOptionValid(v func(*Document) error) InputOption {
 	}
 }
 
-func WithInputOptionValidColor(v Color) InputOption {
+func WithInputOptionValidColor(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.ValidColor
 		cc.ValidColor = v
@@ -94,7 +100,7 @@ func WithInputOptionValidColor(v Color) InputOption {
 	}
 }
 
-func WithInputOptionValidBG(v Color) InputOption {
+func WithInputOptionValidBG(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.ValidBG
 		cc.ValidBG = v
@@ -110,7 +116,7 @@ func WithInputOptionOnFinish(v func(input string, eof error)) InputOption {
 	}
 }
 
-func WithInputOptionFinish(v Key) InputOption {
+func WithInputOptionFinish(v input.Key) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.Finish
 		cc.Finish = v
@@ -118,7 +124,7 @@ func WithInputOptionFinish(v Key) InputOption {
 	}
 }
 
-func WithInputOptionCancel(v Key) InputOption {
+func WithInputOptionCancel(v input.Key) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.Cancel
 		cc.Cancel = v
@@ -135,7 +141,7 @@ func WithInputOptionResultText(v InputFinishTextFunc) InputOption {
 	}
 }
 
-func WithInputOptionResultColor(v Color) InputOption {
+func WithInputOptionResultColor(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.ResultColor
 		cc.ResultColor = v
@@ -143,7 +149,7 @@ func WithInputOptionResultColor(v Color) InputOption {
 	}
 }
 
-func WithInputOptionResultBG(v Color) InputOption {
+func WithInputOptionResultBG(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.ResultBG
 		cc.ResultBG = v
@@ -159,7 +165,7 @@ func WithInputOptionDefault(v string) InputOption {
 	}
 }
 
-func WithInputOptionDefaultColor(v Color) InputOption {
+func WithInputOptionDefaultColor(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.DefaultColor
 		cc.DefaultColor = v
@@ -167,7 +173,7 @@ func WithInputOptionDefaultColor(v Color) InputOption {
 	}
 }
 
-func WithInputOptionDefaultBG(v Color) InputOption {
+func WithInputOptionDefaultBG(v output.Color) InputOption {
 	return func(cc *InputOptions) InputOption {
 		previous := cc.DefaultBG
 		cc.DefaultBG = v
@@ -218,23 +224,23 @@ var watchDogInputOptions func(cc *InputOptions)
 func newDefaultInputOptions() *InputOptions {
 	cc := &InputOptions{
 		Tip:          "",
-		TipColor:     Yellow,
-		TipBG:        DefaultColor,
+		TipColor:     output.Yellow,
+		TipBG:        output.DefaultColor,
 		Prefix:       ">> ",
-		PrefixColor:  Green,
-		PrefixBG:     DefaultColor,
+		PrefixColor:  output.Green,
+		PrefixBG:     output.DefaultColor,
 		Valid:        nil,
-		ValidColor:   Red,
-		ValidBG:      DefaultColor,
+		ValidColor:   output.Red,
+		ValidBG:      output.DefaultColor,
 		OnFinish:     nil,
-		Finish:       Enter,
-		Cancel:       ControlC,
+		Finish:       input.Enter,
+		Cancel:       input.ControlC,
 		ResultText:   defaultInputFinishText,
-		ResultColor:  Blue,
-		ResultBG:     DefaultColor,
+		ResultColor:  output.Blue,
+		ResultBG:     output.DefaultColor,
 		Default:      "",
-		DefaultColor: Brown,
-		DefaultBG:    DefaultColor,
+		DefaultColor: output.Brown,
+		DefaultBG:    output.DefaultColor,
 	}
 	return cc
 }

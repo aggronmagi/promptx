@@ -5,7 +5,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/aggronmagi/promptx"
+	"github.com/aggronmagi/promptx/v2/v2"
+	"github.com/aggronmagi/promptx/v2/v2/blocks"
 )
 
 // 0:未登录 1:area1 2:area2
@@ -17,119 +18,130 @@ const (
 	SetArea2  = "area2"
 )
 
-func loginCommand() *promptx.Cmd {
-	return promptx.NewCommand("login", "登录游戏",
-		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
-		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
-	).ExecFunc(func(ctx promptx.CommandContext) {
-		type LoginArgs struct {
-			Server  string
-			Account string
-		}
-		var args LoginArgs
-		if err := ctx.Bind(&args); err != nil {
-			ctx.Println("args bind error:", err)
-			return
-		}
-		ctx.Println(args.Account, "login success on", args.Server)
+func loginCommand() *promptx.Command {
+	type LoginArgs struct {
+		Server  string `arg:"选择登录的游戏服务器" select:"开发服,测试服,体验服"`
+		Account string `arg:"账号" check:"NotEmpty"`
+	}
+	return promptx.NewCommandWithFunc("login", "登录游戏", func(ctx blocks.Context, arg *LoginArgs) {
+		ctx.Println(arg.Account, "login success on", arg.Server)
 		state = 1
-		//
-		ctx.SwitchCommandSet(SetArea1)
+		// 切换命令组
+		promptx.SwitchCommandGroup(ctx, SetArea1)
 	})
 }
 
-func logoutCommand() *promptx.Cmd {
-	return promptx.NewCommand("logout", "退出游戏").ExecFunc(func(ctx promptx.CommandContext) {
+func logoutCommand() *promptx.Command {
+	return promptx.NewCommandWithFuncLegacy("logout", "退出游戏", func(ctx blocks.Context) {
 		state = 0
-		ctx.SwitchCommandSet(SetCommon)
+		promptx.SwitchCommandGroup(ctx, SetCommon)
 	})
 }
 
-func resetCommand() *promptx.Cmd {
-	return promptx.NewCommand("reset", "reset options").SubCommands(
-		promptx.NewCommand("log", "reset log level",
-			promptx.WithArgSelect("level", []string{"debug", "info"}),
-		).ExecFunc(func(ctx promptx.CommandContext) {
-			log.Println("set log level", ctx.CheckString(0))
+func resetCommand() *promptx.Command {
+	type ResetLogArgs struct {
+		Level string `arg:"level" select:"debug,info"`
+	}
+	cmd := promptx.NewCommandWithFunc("reset", "reset options", func(ctx blocks.Context, arg *struct{}) {})
+	cmd.SubCommands(
+		promptx.NewCommandWithFunc("log", "reset log level", func(ctx blocks.Context, arg *ResetLogArgs) {
+			log.Println("set log level", arg.Level)
 		}),
 	)
+	return cmd
 }
 
-func playCommand() *promptx.Cmd {
-	return promptx.NewCommand("play", "play games").ExecFunc(func(ctx promptx.CommandContext) {
+func playCommand() *promptx.Command {
+	return promptx.NewCommandWithFuncLegacy("play", "play games", func(ctx blocks.Context) {
 		ctx.Println("play game in area1...")
 	})
 }
 
-func play2Command() *promptx.Cmd {
-	return promptx.NewCommand("play", "play games").ExecFunc(func(ctx promptx.CommandContext) {
+func play2Command() *promptx.Command {
+	return promptx.NewCommandWithFuncLegacy("play", "play games", func(ctx blocks.Context) {
 		ctx.Println("play game in area2...")
 	})
 }
-func gotoCommand() *promptx.Cmd {
-	return promptx.NewCommand("goto", "goto area",
-		promptx.WithArgSelect("area", []string{SetArea1, SetArea2}),
-	).ExecFunc(func(ctx promptx.CommandContext) {
-		area := ctx.CheckString(0)
-		state = 1 + ctx.CheckSelectIndex(0)
-		ctx.SwitchCommandSet(area)
+
+func gotoCommand() *promptx.Command {
+	type GotoArgs struct {
+		Area string `arg:"area" select:"area1,area2"`
+	}
+	return promptx.NewCommandWithFunc("goto", "goto area", func(ctx blocks.Context, arg *GotoArgs) {
+		state = 1
+		if arg.Area == SetArea2 {
+			state = 2
+		}
+		promptx.SwitchCommandGroup(ctx, arg.Area)
 	})
 }
 
 func main() {
-	p := promptx.New(
-		promptx.WithCommon(
-			promptx.WithCommonOptionOnNonCommand(func(ctx promptx.Context, command string) error {
-				if strings.Contains(strings.ToLower(command), "err") {
-					return errors.New("error command")
-				}
-				ctx.Println("non command", command)
-				return nil
-			}),
-			promptx.WithCommonOptionCommandPrefix("/"),
-		),
-	)
-	// default set
-	p.AddCommandSet(SetCommon, []*promptx.Cmd{
-		resetCommand(),
-		loginCommand(),
-	}, promptx.WithPreCheck(func(ctx promptx.Context) error {
-		if state != 0 {
-			return errors.New("already login")
-		}
-		return nil
-	}), promptx.WithPromptStr("not login >> "))
-	//
-	p.AddCommandSet(SetArea1, []*promptx.Cmd{
-		gotoCommand(),
-		playCommand(),
-		resetCommand(),
-		logoutCommand(),
-	}, promptx.WithPreCheck(func(ctx promptx.Context) error {
-		if state == 0 {
-			return errors.New("not login")
-		}
-		if state != 1 {
-			return errors.New("not in " + SetArea1)
-		}
-		return nil
-	}), promptx.WithPromptStr("area1 >> "))
-
-	p.AddCommandSet(SetArea2, []*promptx.Cmd{
-		gotoCommand(),
-		play2Command(),
-		resetCommand(),
-		logoutCommand(),
-	}, promptx.WithPreCheck(func(ctx promptx.Context) error {
-		if state == 0 {
-			return errors.New("not login")
-		}
-		if state != 2 {
-			return errors.New("not in " + SetArea2)
-		}
-		return nil
-	}), promptx.WithPromptStr("area2 >> "),
-	)
+	// 使用新的配置 API
+	config := promptx.NewConfig()
+	
+	// 注意：OnNonCommand 和 CommandPrefix 现在在 CommandGroupConfig 中配置
+	
+	// 默认命令组
+	config.DefaultCommandGroup().
+		AddCommand(
+			resetCommand(),
+			loginCommand(),
+		).
+		PreCheck(func(ctx blocks.Context) error {
+			if state != 0 {
+				return errors.New("already login")
+			}
+			return nil
+		}).
+		CommandPrompt("not login >> ").
+		OnNonCommand(func(ctx blocks.Context, command string) error {
+			if strings.Contains(strings.ToLower(command), "err") {
+				return errors.New("error command")
+			}
+			ctx.Println("non command", command)
+			return nil
+		})
+	
+	// area1 命令组
+	config.AddCommandGroup(SetArea1).
+		AddCommand(
+			gotoCommand(),
+			playCommand(),
+			resetCommand(),
+			logoutCommand(),
+		).
+		PreCheck(func(ctx blocks.Context) error {
+			if state == 0 {
+				return errors.New("not login")
+			}
+			if state != 1 {
+				return errors.New("not in " + SetArea1)
+			}
+			return nil
+		}).
+		CommandPrompt("area1 >> ")
+	
+	// area2 命令组
+	config.AddCommandGroup(SetArea2).
+		AddCommand(
+			gotoCommand(),
+			play2Command(),
+			resetCommand(),
+			logoutCommand(),
+		).
+		PreCheck(func(ctx blocks.Context) error {
+			if state == 0 {
+				return errors.New("not login")
+			}
+			if state != 2 {
+				return errors.New("not in " + SetArea2)
+			}
+			return nil
+		}).
+		CommandPrompt("area2 >> ")
+	
+	p := config.Build()
 	log.SetOutput(p.Stdout())
 	p.Run()
 }

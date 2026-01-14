@@ -26,173 +26,269 @@ zap日志需要通过 ~p.Stdout()~ 定制实现zapcore.
 go get github.com/aggronmagi/promptx@latest
 #+end_src
 ** 简单命令
-#+begin_src go
-func loginCommand() *promptx.Cmd {
-	return promptx.NewCommand("login", "登录游戏",
-		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
-		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
-	).ExecFunc(func(ctx promptx.CommandContext) {
-		// 强类型参数绑定
-		type LoginArgs struct {
-			Server  string
-			Account string
-		}
-		var args LoginArgs
-		if err := ctx.Bind(&args); err != nil {
-			ctx.Printf("参数绑定失败: %v\n", err)
-			return
-		}
-		
-		// 或者使用位置访问
-		// index := ctx.CheckSelectIndex(0)
-		// account := ctx.CheckString(1)
-		
-		// custom logic
-		// ....
+*** 函数风格命令（推荐用于简单命令）
+使用 ~NewCommandWithFunc~ 创建带参数的命令，使用泛型方式自动解析参数：
 
-		ctx.Printf("登录成功: %s 服务器: %s\n", args.Account, args.Server)
+#+begin_src go
+type LoginArgs struct {
+	Server  string `arg:"选择登录的游戏服务器" select:"开发服,测试服,体验服"`
+	Account string `arg:"账号" check:"NotEmpty"`
+}
+
+func loginCommand() *promptx.Command {
+	return promptx.NewCommandWithFunc("login", "登录游戏", func(ctx blocks.Context, arg *LoginArgs) {
+		ctx.Println(arg.Account, "login success on", arg.Server)
 	})
 }
 
 func main() {
-    // 使用统一构造函数 New
-    p := promptx.New(
-		promptx.WithCommon(promptx.WithCommonOptionCmds(loginCommand())),
-		// 其他命令 ...
-	)
+	config := promptx.NewConfig()
+	config.DefaultCommandGroup().AddCommand(loginCommand())
+	p := config.Build()
 	p.Run()
 }
 #+end_src
-完整例子 [[./_example/demo/main.go][Common Command]]
-** 命令集
-#+begin_src go
 
-func loginCommand() *promptx.Cmd {
-	return promptx.NewCommand("login", "登录游戏",
-		promptx.WithArgSelect("选择登录的游戏服务器", []string{"开发服", "测试服", "体验服"}),
-		promptx.WithArgsInput("账号:", promptx.CheckerNotEmpty()),
-	).ExecFunc(func(ctx promptx.CommandContext) {
-		// 输入的string
-		id := ctx.CheckString(1)
-		ctx.Println(id, "login success")
-		state = 1
-		// 切换命令集
-		ctx.SwitchCommandSet("linked")
-	})
+*** Commander 接口风格命令（推荐用于复杂命令）
+实现 ~Commander~ 接口创建自包含的命令，参数自动从结构体字段解析：
+
+#+begin_src go
+type LoginCommand struct {
+	Server  string `arg:"选择登录的游戏服务器" select:"开发服,测试服,体验服"`
+	Account string `arg:"账号" check:"NotEmpty"`
 }
 
-func logoutCommand() *promptx.Cmd {
-	return promptx.NewCommand("logout", "退出游戏").ExecFunc(func(ctx promptx.CommandContext) {
-		state = 0
-		ctx.SwitchCommandSet("")
-	})
+func (c *LoginCommand) Name() string {
+	return "login"
+}
+
+func (c *LoginCommand) Help() string {
+	return "登录游戏"
+}
+
+func (c *LoginCommand) Exec(ctx blocks.Context) {
+	ctx.Println(c.Account, "login success on", c.Server)
 }
 
 func main() {
-	p := promptx.New()
-	// 添加命令集，使用简化的选项名称
-	p.AddCommandSet("", []*promptx.Cmd{
-		loginCommand(),
-	}, promptx.WithPromptStr("not login >> "))
-	//
-	p.AddCommandSet("linked", []*promptx.Cmd{
-		logoutCommand(),
-	}, promptx.WithPromptStr("linked >> "))
+	config := promptx.NewConfig()
+	config.DefaultCommandGroup().AddCommand(promptx.NewCommand(&LoginCommand{}))
+	p := config.Build()
+	p.Run()
+}
+#+end_src
 
+完整例子 [[./_example/demo/main.go][Common Command]]
+** 新版配置 API
+使用 ~NewConfig()~ 和 ~NewConfig().DefaultCommandGroup()~ 流式 API 创建命令：
+
+#+begin_src go
+func main() {
+	config := promptx.NewConfig()
+	
+	// 在默认命令组中添加命令
+	config.DefaultCommandGroup().
+		AddCommand(
+			promptx.NewCommand(&MyCommand1{}),
+			promptx.NewCommand(&MyCommand2{}),
+			loginCommand(),  // 也支持函数风格命令
+		).
+		CommandPrefix("!").  // 设置命令前缀
+		OnNonCommand(func(ctx blocks.Context, command string) error {
+			ctx.Println("non command:", command)
+			return nil
+		})
+	
+	p := config.Build()
+	p.Run()
+}
+#+end_src
+
+** 命令集
+#+begin_src go
+type LoginCommand struct {
+	Server  string `arg:"选择登录的游戏服务器" select:"开发服,测试服,体验服"`
+	Account string `arg:"账号" check:"NotEmpty"`
+}
+
+func (c *LoginCommand) Name() string {
+	return "login"
+}
+
+func (c *LoginCommand) Help() string {
+	return "登录游戏"
+}
+
+func (c *LoginCommand) Exec(ctx blocks.Context) {
+	ctx.Println(c.Account, "login success")
+	// 切换命令组
+	promptx.SwitchCommandGroup(ctx, "area1")
+}
+
+type LogoutCommand struct{}
+
+func (c *LogoutCommand) Name() string {
+	return "logout"
+}
+
+func (c *LogoutCommand) Help() string {
+	return "退出游戏"
+}
+
+func (c *LogoutCommand) Exec(ctx blocks.Context) {
+	// 切换回主菜单
+	promptx.SwitchCommandGroup(ctx, "")
+}
+
+func main() {
+	config := promptx.NewConfig()
+	
+	// 默认命令组
+	config.DefaultCommandGroup().
+		AddCommand(promptx.NewCommand(&LoginCommand{})).
+		Prompt("main >> ")
+	
+	// 添加其他命令组
+	config.AddCommandGroup("area1").
+		AddCommand(promptx.NewCommand(&LogoutCommand{})).
+		Prompt("area1 >> ")
+
+	p := config.Build()
 	p.Run()
 }
 #+end_src
 完整例子 [[./_example/commandset/main.go][Command Set]]
 ** API
 *** 创建命令
+**** 函数风格（推荐用于简单命令）
 #+begin_src go
-// NewCommand 创建交互式命令 name:命令名称 help:提示信息 args 命令参数 
-func NewCommand(name, help string, args ...CommandParameter) *Cmd
-// 设置命令执行函数 
-func (c *Cmd) ExecFunc(f func(ctx CommandContext)) *Cmd 
-// 设置命令别名  
-func (c *Cmd) Aliases(aliases ...string) *Cmd 
-// SubCommands 添加子命令 
-func (c *Cmd) SubCommands(cmds ...*Cmd) *Cmd
+// NewCommandWithFunc 泛型命令方式，自动解析参数
+func NewCommandWithFunc[ARG any](name, help string, run func(ctx blocks.Context, arg *ARG)) *Command
+
+// NewCommandWithFuncLegacy 不带参数的命令
+func NewCommandWithFuncLegacy(name, help string, run func(ctx blocks.Context)) *Command
 #+end_src
-*** 命令参数 需要设置提示信息,如果用户没有一次性输入完整,提示用户输入.
+
+**** Commander 接口风格（推荐用于复杂命令）
 #+begin_src go
-// 手动输入string作为参数
-func WithArgsInput(tip string, check InputChecker, opts ...InputOption) CommandParameter
-// 单选参数 多选一
-func WithArgSelect(tip string, list []string, opts ...SelectOption) CommandParameter 
+// Commander 接口
+type Commander interface {
+	Name() string
+	Help() string
+	Exec(ctx blocks.Context)
+}
+
+// NewCommand 创建 Commander 类型的命令
+func NewCommand(custom Commander) *Command
 #+end_src
-*** Input类型参数的检测
+
+**** 子命令
 #+begin_src go
-// 检测输入必须是非空字符串
-func CheckerNotEmpty() InputChecker
-// 检测输入必须是数值类型 
-func CheckerInteger() InputChecker
-// 检测输入必须是非0数字
-func CheckerNotZeroInteger() InputChecker
-// 检测输入必须是自然数 (1,2,3....)
-func CheckerNaturalNumber() InputChecker
-// 检测输入必须是在min,max区间的数字 
-func CheckerIntegerRange(min, max int64) InputChecker
-// 检测输入必须是IP端口(例 127.0.0.1:8080)
-func CheckerIPPort() InputChecker
-// 检测输入必须是IP端口数组,使用","分隔
-func CheckerAddrsArray() InputChecker 
+// SubCommands 添加子命令
+func (c *Command) SubCommands(cmds ...*Command) *Command
 #+end_src
-*** 命令执行函数的签名 
+*** 命令参数
+参数通过结构体字段的 tag 定义。在创建命令时，参数会自动从结构体字段解析。
+
 #+begin_src go
-// 函数签名
-func xx(ctx CommandContext) {
+type LoginArgs struct {
+	// 选择类型参数
+	Server  string `arg:"选择登录的游戏服务器" select:"开发服,测试服,体验服"`
+	// 输入类型参数，包含检查器
+	Account string `arg:"账号" check:"NotEmpty"`
+	// 可选参数
+	Email   string `arg:"邮箱" check:"NotEmpty" optional:"true"`
 }
 #+end_src
-*** 命令上下文 CommandContext
-命令执行函数内 使用 ~CommandContext~ 提供的 ~Check...~ 方法或 ~Bind~ 方法获取参数.
 
-Check 方法调用推荐和创建命令时候输入的 ~CommandParameter~ 一一匹配. Index 参数从 0 开始.
+**** 参数 tag 说明
+- ~arg: "提示文字"~ - 参数提示信息
+- ~select: "选项1,选项2,选项3"~ - 单选参数的选项列表
+- ~check: "检查器名称"~ - 参数检查器（见下文）
+- ~optional: "true"~ - 可选参数（默认为必填）
+
+*** 参数检查器
+内置检查器用于验证参数合法性：
 
 #+begin_src go
-// CommandContext
-type CommandContext interface {
-	Context
-
-	// 强类型绑定 (推荐)
-	Bind(v interface{}) error
-
-	// 位置访问
-	CheckString(index int) string
-	CheckInteger(index int) int64
-	CheckIPPort(index int) (ip, port string)
-	CheckAddrs(index int) (addrs []string)
-	CheckSelectIndex(index int) int
-}
+// 检查非空字符串
+check:"NotEmpty"
+// 检查数值类型
+check:"Integer"
+// 检查非零数字
+check:"NotZeroInteger"
+// 检查自然数 (>=1)
+check:"NaturalNumber"
 #+end_src
-*** 命令集
-可以添加不同的命令集合,首次添加的命令集合会设置为默认的命令集.
+
+也可以通过 ~RegisterChecker~ 注册自定义检查器：
+
 #+begin_src go
-type Context interface {
-	// AddCommandSet 添加命令集，首次添加命令集时会自动切换。
-	AddCommandSet(name string, cmds []*Cmd, opts ...CommandSetOption) 
-	// SwitchCommandSet 切换到指定命令集,参数会传递给 ChangeNotify 函数
-	SwitchCommandSet(name string, args ...interface{})
-}
+promptx.RegisterChecker("MyChecker", func(value string) error {
+	if len(value) < 3 {
+		return fmt.Errorf("value too short")
+	}
+	return nil
+})
 #+end_src
-**** 选项
-命令集添加时候,允许设置以下选项:
+*** 命令组管理
+使用 ~Config~ 的流式 API 管理命令组：
+
 #+begin_src go
-// 设置当前命令集的操作记录持久化保存的文件.如果不设置,每次切换命令集都会清空历史操作记录.
-func WithHistory(v string) CommandSetOption 
-// 设置当前命令集内所有命令执行的前置检测函数
-func WithPreCheck(v func(ctx Context) error) CommandSetOption 
-// 设置切换到命令集时的提示字符串(自定义文字颜色)
-func WithPrompt(v ...*Word) CommandSetOption
-// 设置切换到命令集时的提示字符串(默认颜色)
-func WithPromptStr(prompt string) CommandSetOption
-// 设置切换到命令集时候的通知函数,args为 SwitchCommandSet 传递的参数.
-func WithOnChange(v func(ctx Context, args []interface{})) CommandSetOption 
-// 设置非命令输入时候的处理函数。返回 nil 视为处理成功（记录历史），返回 error 则打印错误。
-func WithCommonOptionOnNonCommand(v func(ctx Context, command string) error) CommonOption
-// 设置命令前缀。例如设置为 '/'，则只有以 '/' 开头的输入才会被视为命令。
-func WithCommonOptionCommandPrefix(v string) CommonOption
+// 创建配置
+config := promptx.NewConfig()
+
+// 配置默认命令组
+config.DefaultCommandGroup().
+	AddCommand(cmd1, cmd2, cmd3).
+	Prompt("main >> ").
+	History("./.history_main")
+
+// 添加其他命令组
+config.AddCommandGroup("area1").
+	AddCommand(cmd4, cmd5).
+	Prompt("area1 >> ").
+	History("./.history_area1")
+
+p := config.Build()
+p.Run()
+#+end_src
+
+**** 命令组选项
+命令组配置方法：
+
+#+begin_src go
+// 添加命令
+func (g *CommandGroupBuilder) AddCommand(cmds ...*Command) *CommandGroupBuilder
+
+// 设置提示符
+func (g *CommandGroupBuilder) Prompt(prompt string) *CommandGroupBuilder
+
+// 设置历史文件
+func (g *CommandGroupBuilder) History(filepath string) *CommandGroupBuilder
+
+// 执行前检查函数
+func (g *CommandGroupBuilder) PreCheck(fn func(ctx blocks.Context) error) *CommandGroupBuilder
+
+// 非命令处理函数
+func (g *CommandGroupBuilder) OnNonCommand(fn func(ctx blocks.Context, command string) error) *CommandGroupBuilder
+
+// 命令前缀设置
+func (g *CommandGroupBuilder) CommandPrefix(prefix string) *CommandGroupBuilder
+
+// 命令组切换回调
+func (g *CommandGroupBuilder) OnChange(fn func(ctx blocks.Context, name string)) *CommandGroupBuilder
+#+end_src
+
+**** 切换命令组
+在命令执行函数中切换命令组：
+
+#+begin_src go
+// 使用 SwitchCommandGroup 函数
+promptx.SwitchCommandGroup(ctx, "area1")
+
+// 或直接调用 ctx 的方法
+ctx.(promptx.CommandGroupSwitcher).SwitchCommandGroup("area1")
 #+end_src
 
 *** Word 彩色文字

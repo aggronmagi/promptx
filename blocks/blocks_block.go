@@ -1,4 +1,9 @@
-package promptx
+package blocks
+
+import (
+	buffer "github.com/aggronmagi/promptx/v2/buffer"
+	"github.com/aggronmagi/promptx/v2/input"
+)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Mode Interface
@@ -10,9 +15,9 @@ type ConsoleBlocks interface {
 	SetActive(active bool)
 	IsDraw(status int) bool
 	Render(ctx PrintContext, preCursor int) (cursor int)
-	OnEvent(ctx PressContext, key Key, in []byte) (exit bool)
+	OnEvent(ctx PressContext, key input.Key, in []byte) (exit bool)
 	ResetBuffer()
-	GetBuffer() *Buffer
+	GetBuffer() *buffer.Buffer
 }
 
 // KeyBindFunc receives context and process
@@ -20,14 +25,14 @@ type KeyBindFunc func(ctx PressContext) (exit bool)
 
 // KeyBind represents which key should do what operation.
 type KeyBind struct {
-	Key Key
+	Key input.Key
 	Fn  KeyBindFunc
 }
 
 // EmptyBlocks empty for basic operation
 type EmptyBlocks struct {
 	active  bool
-	keyBind map[Key]KeyBindFunc
+	keyBind map[input.Key]KeyBindFunc
 	// is draw
 	isDraw func(status int) bool
 	//
@@ -67,7 +72,7 @@ func (m *EmptyBlocks) Render(ctx PrintContext, preCursor int) (cursor int) {
 }
 
 // OnEvent deal console key press
-func (m *EmptyBlocks) OnEvent(ctx PressContext, key Key, in []byte) (exit bool) {
+func (m *EmptyBlocks) OnEvent(ctx PressContext, key input.Key, in []byte) (exit bool) {
 	if m.test != nil {
 		m.test()
 	}
@@ -82,9 +87,9 @@ func (m *EmptyBlocks) OnEvent(ctx PressContext, key Key, in []byte) (exit bool) 
 			exit = true
 		}
 	}
-	if key == NotDefined && len(in) == 1 {
+	if key == input.NotDefined && len(in) == 1 {
 		// ascii code event
-		key = Key(in[0]) + NotDefined + 1
+		key = input.Key(in[0]) + input.NotDefined + 1
 		if bind, ok := m.keyBind[key]; ok {
 			if bind(ctx) {
 				exit = true
@@ -99,14 +104,14 @@ func (m *EmptyBlocks) OnEvent(ctx PressContext, key Key, in []byte) (exit bool) 
 func (m EmptyBlocks) ResetBuffer() {}
 
 // GetBuffer get input buffer
-func (m *EmptyBlocks) GetBuffer() *Buffer {
+func (m *EmptyBlocks) GetBuffer() *buffer.Buffer {
 	return nil
 }
 
 // BindKey bind key funcs
-func (m *EmptyBlocks) BindKey(bind KeyBindFunc, keys ...Key) {
+func (m *EmptyBlocks) BindKey(bind KeyBindFunc, keys ...input.Key) {
 	if m.keyBind == nil {
-		m.keyBind = map[Key]KeyBindFunc{}
+		m.keyBind = map[input.Key]KeyBindFunc{}
 	}
 	for _, key := range keys {
 		m.keyBind[key] = bind
@@ -116,14 +121,14 @@ func (m *EmptyBlocks) BindKey(bind KeyBindFunc, keys ...Key) {
 // BindASCII bind ascii code func
 func (m *EmptyBlocks) BindASCII(bind KeyBindFunc, ins ...byte) {
 	if m.keyBind == nil {
-		m.keyBind = map[Key]KeyBindFunc{}
+		m.keyBind = map[input.Key]KeyBindFunc{}
 	}
 	for _, in := range ins {
-		m.keyBind[Key(in)+NotDefined+1] = bind
+		m.keyBind[input.Key(in)+input.NotDefined+1] = bind
 	}
 }
 
-func (m *EmptyBlocks) IsBind(key Key) bool {
-	_,ok := m.keyBind[key]
-	return ok 
+func (m *EmptyBlocks) IsBind(key input.Key) bool {
+	_, ok := m.keyBind[key]
+	return ok
 }

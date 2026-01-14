@@ -1,7 +1,7 @@
 package completion
 
 import (
-	"github.com/aggronmagi/promptx/internal/debug"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
 )
 
 // Suggest is printed when completing.

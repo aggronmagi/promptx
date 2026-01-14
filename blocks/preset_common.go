@@ -1,12 +1,14 @@
-package promptx
+package blocks
 
 import (
 	"fmt"
 	"strings"
 
-	buffer "github.com/aggronmagi/promptx/buffer"
-	"github.com/aggronmagi/promptx/history"
-	"github.com/aggronmagi/promptx/internal/debug"
+	buffer "github.com/aggronmagi/promptx/v2/buffer"
+	"github.com/aggronmagi/promptx/v2/history"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
+	"github.com/aggronmagi/promptx/v2/output"
 )
 
 // CommonOptions promptx options
@@ -16,24 +18,20 @@ import (
 func promptxCommonOptions() interface{} {
 	return map[string]interface{}{
 		"Tip":         "",
-		"TipColor":    Color(Yellow),
-		"TipBG":       Color(DefaultColor),
+		"TipColor":    output.Color(output.Yellow),
+		"TipBG":       output.Color(output.DefaultColor),
 		"Prefix":      ">>> ",
-		"PrefixColor": Color(Green),
-		"PrefixBG":    Color(DefaultColor),
+		"PrefixColor": output.Color(output.Green),
+		"PrefixBG":    output.Color(output.DefaultColor),
 		// check input valid
-		"Valid":      (func(status int, in *Document) error)(nil),
-		"ValidColor": Color(Red),
-		"ValidBG":    Color(DefaultColor),
+		"Valid":      (func(status int, in *buffer.Document) error)(nil),
+		"ValidColor": output.Color(output.Red),
+		"ValidBG":    output.Color(output.DefaultColor),
 		// exec input command
 		"Exec":     (func(ctx Context, command string))(nil),
-		"Finish":   Key(Enter),
-		"Cancel":   Key(ControlC),
+		"Finish":   input.Key(input.Enter),
+		"Cancel":   input.Key(input.ControlC),
 		"Complete": []CompleteOption(nil),
-		// if command slice size > 0. it will ignore Exec and Valid options
-		"Cmds": []*Cmd(nil),
-		// alway check input command
-		"AlwaysCheck": bool(false),
 		// history file
 		"History": string(""),
 		// maximum history size
@@ -44,12 +42,6 @@ func promptxCommonOptions() interface{} {
 		"HistoryDedup": bool(false),
 		// record timestamps
 		"HistoryTimestamp": bool(false),
-		// OnNonCommand deal with non command input
-		"OnNonCommand": (func(ctx Context, command string) error)(nil),
-		// CommandPrefix command prefix. example '/'
-		"CommandPrefix": string(""),
-		// CommandPreCheck check before exec Cmd. only use for promptx.Cmd.
-		"PreCheck": (func(ctx Context) error)(nil),
 	}
 }
 
@@ -62,7 +54,6 @@ type CommonBlockManager struct {
 	Validate   *BlocksNewLine
 	Completion *BlocksCompletion
 	cc         *CommonOptions
-	root       *Cmd
 	history    *history.History
 	hf         string
 }
@@ -108,7 +99,7 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 			m.Completion.resetCompletion(ctx)
 		}
 		return false
-	}, ControlP, Up)
+	}, input.ControlP, input.Up)
 	m.Completion.BindKey(func(ctx PressContext) (exit bool) {
 		buf := ctx.GetBuffer()
 		if new, ok := m.history.Newer(buf.Text()); ok {
@@ -118,7 +109,7 @@ func NewDefaultBlockManger(opts ...CommonOption) (m *CommonBlockManager) {
 			m.Completion.resetCompletion(ctx)
 		}
 		return false
-	}, ControlN, Down)
+	}, input.ControlN, input.Down)
 
 	m.SetBeforeEvent(m.BeforeEvent)
 	m.SetBehindEvent(m.BehindEvent)
@@ -155,7 +146,7 @@ func (m *CommonBlockManager) applyOptionModify() {
 			BGColor:   cc.TipBG,
 			Bold:      false,
 		})
-		m.Tip.Words = append(m.Tip.Words, &NewLineWord)
+		m.Tip.Words = append(m.Tip.Words, NewLineWord)
 	}
 
 	if len(m.PreWords.Words) == 0 {
@@ -172,7 +163,6 @@ func (m *CommonBlockManager) applyOptionModify() {
 
 	m.SetCancelKey(cc.Cancel)
 	m.SetFinishKey(cc.Finish)
-	debug.Println("applyOptionModify 1")
 	// completion
 	if m.Completion.Cfg == nil {
 		m.Completion.Cfg = NewCompleteOptions(cc.Complete...)
@@ -183,151 +173,6 @@ func (m *CommonBlockManager) applyOptionModify() {
 	} else {
 		m.Completion.ApplyOptions(cc.Complete...)
 	}
-	debug.Println("applyOptionModify 2")
-	// command
-	m.initCommand()
-
-	debug.Println("applyOptionModify 3")
-}
-
-func (m *CommonBlockManager) initCommand() {
-	cc := m.cc
-	if len(cc.Cmds) < 1 {
-		debug.Println("revert Command")
-		// revert command
-		m.root = nil
-		return
-	}
-	debug.Println("initCommand")
-	m.root = &Cmd{}
-	m.root.SubCommands(cc.Cmds...)
-	sep := " "
-	if m.cc.CommandPrefix != "" {
-		sep += m.cc.CommandPrefix
-	}
-	// replace completion
-	m.Completion.ApplyOptions(
-		WithCompleteOptionCompleter(m.completeCommand),
-		WithCompleteOptionCompletionFillSpace(true),
-		WithCompleteOptionWordSeparator(sep),
-	)
-	// replace valid func
-	m.cc.Valid = m.validCommand
-
-	// replace run action
-	m.cc.Exec = m.execCommand
-}
-
-func (m *CommonBlockManager) completeCommand(in Document) []*Suggest {
-	text := in.Text
-	if m.cc.CommandPrefix != "" {
-		if !strings.HasPrefix(text, m.cc.CommandPrefix) {
-			return nil
-		}
-		prefixLen := len(m.cc.CommandPrefix)
-		prefixRunes := len([]rune(m.cc.CommandPrefix))
-
-		newText := text[prefixLen:]
-		newCursor := in.CursorPosition() - prefixRunes
-		if newCursor < 0 {
-			newCursor = 0
-		}
-		in = *buffer.NewDocumentWithCursor(newText, newCursor)
-	}
-	return m.root.FindSuggest(&in)
-}
-
-func (m *CommonBlockManager) validCommand(status int, d *Document) error {
-	// is check normal status
-	if status == NormalStatus && !m.cc.AlwaysCheck {
-		return nil
-	}
-	if len(d.Text) == 0 {
-		return nil
-	}
-	text := d.Text
-	if m.cc.CommandPrefix != "" {
-		if !strings.HasPrefix(text, m.cc.CommandPrefix) {
-			return nil
-		}
-		text = text[len(m.cc.CommandPrefix):]
-	}
-	cmds, _, err := m.root.ParseInput(text)
-	if err != nil {
-		return err
-	}
-	if len(cmds) < 1 {
-		return fmt.Errorf("not found command[%s]", d.Text)
-	}
-	return err
-}
-func (m *CommonBlockManager) execCommand(oldCtx Context, command string) {
-	if len(command) == 0 {
-		return
-	}
-	// cmd precheck
-	if m.cc.PreCheck != nil {
-		err := m.cc.PreCheck(oldCtx)
-		if err != nil {
-			oldCtx.Println("precheck failed,", err)
-			return
-		}
-	}
-
-	execText := command
-	isCmd := true
-	if m.cc.CommandPrefix != "" {
-		if !strings.HasPrefix(command, m.cc.CommandPrefix) {
-			isCmd = false
-		} else {
-			execText = command[len(m.cc.CommandPrefix):]
-		}
-	}
-
-	find := false
-	if isCmd {
-		ctx := &CmdContext{}
-		ctx.Context = m.GetContext()
-		ctx.Line = command
-		ctx.Cmds, ctx.Args, _ = m.root.ParseInput(execText)
-		ctx.Root = m.root
-		if gt, ok := ctx.Context.(interface {
-			getPresetOptions() (*InputOptions, *SelectOptions)
-		}); ok {
-			ctx.InputCC, ctx.SelectCC = gt.getPresetOptions()
-		}
-
-		// debug.Println("find cmd size:", len(ctx.Cmds))
-		// find last command which set exec func.
-		for i := len(ctx.Cmds) - 1; i >= 0; i-- {
-			cmd := ctx.Cmds[i]
-			// debug.Println("find ", cmd.Name)
-			if cmd.execFunc != nil {
-				ctx.Cur = cmd
-				// exec command
-				ctx.execCommand()
-				// // exec command func
-				// cmd.Func(ctx)
-				find = true
-				break
-			}
-		}
-	}
-
-	if !find {
-		if m.cc.OnNonCommand != nil {
-			err := m.cc.OnNonCommand(oldCtx, command)
-			if err != nil {
-				oldCtx.Println(err)
-			}
-		} else {
-			oldCtx.Println("command set deal functions.", command)
-		}
-	}
-}
-func (m *CommonBlockManager) ExecCommand(args []string) {
-	line := strings.Join(args, " ")
-	m.execCommand(m.GetContext(), line)
 }
 
 // SetPrompt set prefix text
@@ -367,12 +212,6 @@ func (m *CommonBlockManager) SetPromptWords(words ...*Word) {
 	}
 }
 
-// ResetCommands 重置命令集合
-func (m *CommonBlockManager) ResetCommands(cmds ...*Cmd) {
-	debug.Println("common.blocks reset commands", len(cmds))
-	m.ApplyOption(WithCommonOptionCmds(cmds...))
-}
-
 // RemoveHistory remove from history
 func (m *CommonBlockManager) RemoveHistory(line string) {
 	m.history.Remove(line)
@@ -403,10 +242,6 @@ func (m *CommonBlockManager) ResetHistoryFile(filename string) {
 	m.hf = cc.History
 }
 
-func (m *CommonBlockManager) SetCommandPreCheck(f func(ctx Context) error) {
-	m.cc.PreCheck = f
-}
-
 func (m *CommonBlockManager) SetOption(opt CommonOption) {
 	_ = opt(m.cc)
 	m.applyOptionModify()
@@ -419,19 +254,19 @@ func (m *CommonBlockManager) ApplyOption(opts ...CommonOption) {
 	m.applyOptionModify()
 }
 
-func (m *CommonBlockManager) BeforeEvent(ctx PressContext, key Key, in []byte) (exit bool) {
+func (m *CommonBlockManager) BeforeEvent(ctx PressContext, key input.Key, in []byte) (exit bool) {
 	// first deal input char event
-	if key == NotDefined && ctx.GetBuffer() != nil {
+	if key == input.NotDefined && ctx.GetBuffer() != nil {
 		ctx.GetBuffer().InsertText(string(in), false, true)
 	}
 
 	return
 }
 
-func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (exit bool) {
+func (m *CommonBlockManager) BehindEvent(ctx PressContext, key input.Key, in []byte) (exit bool) {
 
 	if ctx.GetBuffer() != nil {
-		if m.Input.IsBind(key) || key == NotDefined {
+		if m.Input.IsBind(key) || key == input.NotDefined {
 			m.history.Rebuild(ctx.GetBuffer().Text(), false)
 		}
 		if key == m.cc.Cancel ||
@@ -439,7 +274,7 @@ func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (
 			m.history.Rebuild("", true)
 		}
 		// when exit,reset completion.
-		if key == ControlD && len(ctx.GetBuffer().Text()) == 0 && m.Completion != nil && m.Completion.Completions != nil {
+		if key == input.ControlD && len(ctx.GetBuffer().Text()) == 0 && m.Completion != nil && m.Completion.Completions != nil {
 			m.Completion.Completions.Reset()
 		}
 	}
@@ -447,7 +282,7 @@ func (m *CommonBlockManager) BehindEvent(ctx PressContext, key Key, in []byte) (
 }
 
 // FinishCallBack  call back
-func (m *CommonBlockManager) FinishCallBack(status int, buf *Buffer) bool {
+func (m *CommonBlockManager) FinishCallBack(status int, buf *buffer.Buffer) bool {
 	if status == FinishStatus {
 		if m.cc.Exec != nil && buf != nil && buf.Text() != "" {
 			text := buf.Document().Text
@@ -460,7 +295,7 @@ func (m *CommonBlockManager) FinishCallBack(status int, buf *Buffer) bool {
 }
 
 // PreCheckCallBack change status pre check
-func (m *CommonBlockManager) PreCheckCallBack(status int, buf *Buffer) (success bool) {
+func (m *CommonBlockManager) PreCheckCallBack(status int, buf *buffer.Buffer) (success bool) {
 	success = true
 	if buf != nil && m.Completion.Active() && m.Completion.Completions != nil {
 		if status == FinishStatus {

@@ -1,7 +1,9 @@
-package promptx
+package blocks
 
 import (
-	"github.com/aggronmagi/promptx/internal/debug"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
+	"github.com/aggronmagi/promptx/v2/output"
 	runewidth "github.com/mattn/go-runewidth"
 )
 
@@ -28,8 +30,8 @@ type BlocksSelect struct {
 func (c *BlocksSelect) InitBlocks() {
 	c.SetActive(true)
 
-	c.BindKey(c.Previous, Up, Left, ControlP, BackTab)
-	c.BindKey(c.Next, Down, Right, ControlN, Tab)
+	c.BindKey(c.Previous, input.Up, input.Left, input.ControlP, input.BackTab)
+	c.BindKey(c.Next, input.Down, input.Right, input.ControlN, input.Tab)
 	c.BindASCII(c.Next, 'j', 'J', 'l', 'L')
 	c.BindASCII(c.Previous, 'k', 'K', 'h', 'H')
 	if c.cc.Multi {
@@ -175,7 +177,7 @@ func (c *BlocksSelect) Render(ctx PrintContext, preCursor int) int {
 
 	selected := c.selected - c.verticalScroll
 
-	out.SetColor(White, Cyan, false)
+	out.SetColor(output.White, output.Cyan, false)
 	for i := 0; i < windowHeight; i++ {
 		out.CursorDown(1)
 		ctx.Backward(cursor+width, width+prefixLen)
@@ -206,12 +208,12 @@ func (c *BlocksSelect) Render(ctx PrintContext, preCursor int) int {
 		out.WriteStr(formatted[i].Description)
 
 		if isScrollThumb(i) {
-			out.SetColor(DefaultColor, c.cc.BarColor, false)
+			out.SetColor(output.DefaultColor, c.cc.BarColor, false)
 		} else {
-			out.SetColor(DefaultColor, c.cc.BarBG, false)
+			out.SetColor(output.DefaultColor, c.cc.BarBG, false)
 		}
 		out.WriteStr(" ")
-		out.SetColor(DefaultColor, DefaultColor, false)
+		out.SetColor(output.DefaultColor, output.DefaultColor, false)
 
 		// ctx.LineWrap(cursor + width)
 

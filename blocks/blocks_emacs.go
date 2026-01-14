@@ -1,8 +1,10 @@
-package promptx
+package blocks
 
 import (
-	buffer "github.com/aggronmagi/promptx/buffer"
-	"github.com/aggronmagi/promptx/internal/debug"
+	buffer "github.com/aggronmagi/promptx/v2/buffer"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/internal/debug"
+	"github.com/aggronmagi/promptx/v2/output"
 	runewidth "github.com/mattn/go-runewidth"
 )
 
@@ -37,10 +39,10 @@ import (
 // | [ ] | ctrl + _ | Undo                                                    |
 type BlocksEmacsBuffer struct {
 	EmptyBlocks
-	buf *Buffer
+	buf *buffer.Buffer
 	// colors
-	TextColor Color
-	BGColor   Color
+	TextColor output.Color
+	BGColor   output.Color
 	// // Select
 	// SelectTextColor Color
 	// SelectBGColor   Color
@@ -51,7 +53,7 @@ func (c *BlocksEmacsBuffer) ResetBuffer() {
 	c.buf = buffer.NewBuffer()
 }
 
-func (c *BlocksEmacsBuffer) GetBuffer() *Buffer {
+func (c *BlocksEmacsBuffer) GetBuffer() *buffer.Buffer {
 	return c.buf
 }
 
@@ -85,14 +87,14 @@ func (c *BlocksEmacsBuffer) Render(ctx PrintContext, preCursor int) int {
 	out := ctx.Writer()
 	out.SetColor(c.TextColor, c.BGColor, false)
 	out.WriteStr(text)
-	out.SetColor(DefaultColor, DefaultColor, false)
+	out.SetColor(output.DefaultColor, output.DefaultColor, false)
 	return runewidth.StringWidth(text) + preCursor
 }
 
 var emacsKeyBindings = []KeyBind{
 	// Go to the End of the line
 	{
-		Key: ControlE,
+		Key: input.ControlE,
 		Fn: func(ctx PressContext) bool {
 			x := []rune(ctx.GetBuffer().Document().TextAfterCursor())
 			ctx.GetBuffer().CursorRight(len(x))
@@ -101,7 +103,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Go to the beginning of the line
 	{
-		Key: ControlA,
+		Key: input.ControlA,
 		Fn: func(ctx PressContext) bool {
 			x := []rune(ctx.GetBuffer().Document().TextBeforeCursor())
 			ctx.GetBuffer().CursorLeft(len(x))
@@ -110,7 +112,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Cut the Line after the cursor
 	{
-		Key: ControlK,
+		Key: input.ControlK,
 		Fn: func(ctx PressContext) bool {
 			x := []rune(ctx.GetBuffer().Document().TextAfterCursor())
 			ctx.GetBuffer().Delete(len(x))
@@ -119,7 +121,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Cut/delete the Line before the cursor
 	{
-		Key: ControlU,
+		Key: input.ControlU,
 		Fn: func(ctx PressContext) bool {
 			x := []rune(ctx.GetBuffer().Document().TextBeforeCursor())
 			ctx.GetBuffer().DeleteBeforeCursor(len(x))
@@ -128,20 +130,20 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Delete character under the cursor
 	{
-		Key: ControlD,
+		Key: input.ControlD,
 		Fn: func(ctx PressContext) bool {
 			if ctx.GetBuffer().Text() != "" {
 				ctx.GetBuffer().Delete(1)
-			}else {
-				// use control-d exit 
-				return true 
+			} else {
+				// use control-d exit
+				return true
 			}
 			return false
 		},
 	},
 	// Backspace
 	{
-		Key: ControlH,
+		Key: input.ControlH,
 		Fn: func(ctx PressContext) bool {
 			ctx.GetBuffer().DeleteBeforeCursor(1)
 			return false
@@ -149,7 +151,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Left word arrow:
 	{
-		Key: MetaB,
+		Key: input.MetaB,
 		Fn: func(ctx PressContext) bool {
 			buf := ctx.GetBuffer()
 			doc := buf.Document()
@@ -159,7 +161,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// right word arrow:
 	{
-		Key: MetaF,
+		Key: input.MetaF,
 		Fn: func(ctx PressContext) bool {
 			buf := ctx.GetBuffer()
 			doc := buf.Document()
@@ -169,7 +171,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Right allow: Forward one character
 	{
-		Key: ControlF,
+		Key: input.ControlF,
 		Fn: func(ctx PressContext) bool {
 			ctx.GetBuffer().CursorRight(1)
 			return false
@@ -177,7 +179,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Left allow: Backward one character
 	{
-		Key: ControlB,
+		Key: input.ControlB,
 		Fn: func(ctx PressContext) bool {
 			ctx.GetBuffer().CursorLeft(1)
 			return false
@@ -185,7 +187,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Cut the Word before the cursor.
 	{
-		Key: ControlW,
+		Key: input.ControlW,
 		Fn: func(ctx PressContext) bool {
 			ctx.GetBuffer().DeleteBeforeCursor(len([]rune(
 				ctx.GetBuffer().Document().GetWordBeforeCursorWithSpace(),
@@ -195,7 +197,7 @@ var emacsKeyBindings = []KeyBind{
 	},
 	// Clear the Screen, similar to the clear command
 	{
-		Key: ControlL,
+		Key: input.ControlL,
 		Fn: func(ctx PressContext) bool {
 			out := ctx.Writer()
 			out.EraseScreen()
@@ -209,7 +211,7 @@ var emacsKeyBindings = []KeyBind{
 var commonKeyBindings = []KeyBind{
 	// Go to the End of the line
 	{
-		Key: End,
+		Key: input.End,
 		Fn: func(ctx PressContext) (exit bool) {
 			buf := ctx.GetBuffer()
 			x := []rune(buf.Document().TextAfterCursor())
@@ -219,7 +221,7 @@ var commonKeyBindings = []KeyBind{
 	},
 	// Go to the beginning of the line
 	{
-		Key: Home,
+		Key: input.Home,
 		Fn: func(ctx PressContext) (exit bool) {
 			buf := ctx.GetBuffer()
 			x := []rune(buf.Document().TextBeforeCursor())
@@ -229,7 +231,7 @@ var commonKeyBindings = []KeyBind{
 	},
 	// Delete character under the cursor
 	{
-		Key: Delete,
+		Key: input.Delete,
 		Fn: func(ctx PressContext) (exit bool) {
 			buf := ctx.GetBuffer()
 			buf.Delete(1)
@@ -238,7 +240,7 @@ var commonKeyBindings = []KeyBind{
 	},
 	// Backspace
 	{
-		Key: Backspace,
+		Key: input.Backspace,
 		Fn: func(ctx PressContext) (exit bool) {
 			buf := ctx.GetBuffer()
 			buf.DeleteBeforeCursor(1)
@@ -247,7 +249,7 @@ var commonKeyBindings = []KeyBind{
 	},
 	// Right allow: Forward one character
 	{
-		Key: Right,
+		Key: input.Right,
 		Fn: func(ctx PressContext) (exit bool) {
 			buf := ctx.GetBuffer()
 			buf.CursorRight(1)
@@ -256,7 +258,7 @@ var commonKeyBindings = []KeyBind{
 	},
 	// Left allow: Backward one character
 	{
-		Key: Left,
+		Key: input.Left,
 		Fn: func(ctx PressContext) (exit bool) {
 			buf := ctx.GetBuffer()
 			buf.CursorLeft(1)

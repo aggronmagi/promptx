@@ -2,47 +2,53 @@
 // Exec: "gogen option -n SelectOption -f -o gen_options_select.go"
 // Version: 0.0.4
 
-package promptx
+package blocks
+
+import (
+	"github.com/aggronmagi/promptx/v2/completion"
+	"github.com/aggronmagi/promptx/v2/input"
+	"github.com/aggronmagi/promptx/v2/output"
+)
 
 var _ = promptxSelectOptions()
 
 // SelectOptions promptx options
 // generate by https://github.com/aggronmagi/gogen/
 type SelectOptions struct {
-	Options         []*Suggest
+	Options         []*completion.Suggest
 	Rows            int
 	OnFinish        func(sels []int)
 	Multi           bool
-	Finish          Key
-	Cancel          Key
+	Finish          input.Key
+	Cancel          input.Key
 	Tip             string
-	TipColor        Color
-	TipBG           Color
+	TipColor        output.Color
+	TipBG           output.Color
 	ShowHelp        bool
 	Help            SelHelpTextFunc
-	HelpColor       Color
-	HelpBG          Color
+	HelpColor       output.Color
+	HelpBG          output.Color
 	Valid           func(sels []int) error
-	ValidColor      Color
-	ValidBG         Color
-	SuggestColor    Color
-	SuggestBG       Color
-	SelSuggestColor Color
-	SelSuggestBG    Color
-	DescColor       Color
-	DescBG          Color
-	SelDescColor    Color
-	SelDescBG       Color
-	BarColor        Color
-	BarBG           Color
+	ValidColor      output.Color
+	ValidBG         output.Color
+	SuggestColor    output.Color
+	SuggestBG       output.Color
+	SelSuggestColor output.Color
+	SelSuggestBG    output.Color
+	DescColor       output.Color
+	DescBG          output.Color
+	SelDescColor    output.Color
+	SelDescBG       output.Color
+	BarColor        output.Color
+	BarBG           output.Color
 	FinishText      SelFinishTextFunc
 	ShowItem        bool
-	ResultColor     Color
-	ResultBG        Color
+	ResultColor     output.Color
+	ResultBG        output.Color
 	Defaults        []int
 }
 
-func WithSelectOptionOptions(v ...*Suggest) SelectOption {
+func WithSelectOptionOptions(v ...*completion.Suggest) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.Options
 		cc.Options = v
@@ -74,7 +80,7 @@ func WithSelectOptionMulti(v bool) SelectOption {
 	}
 }
 
-func WithSelectOptionFinish(v Key) SelectOption {
+func WithSelectOptionFinish(v input.Key) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.Finish
 		cc.Finish = v
@@ -82,7 +88,7 @@ func WithSelectOptionFinish(v Key) SelectOption {
 	}
 }
 
-func WithSelectOptionCancel(v Key) SelectOption {
+func WithSelectOptionCancel(v input.Key) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.Cancel
 		cc.Cancel = v
@@ -98,7 +104,7 @@ func WithSelectOptionTip(v string) SelectOption {
 	}
 }
 
-func WithSelectOptionTipColor(v Color) SelectOption {
+func WithSelectOptionTipColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.TipColor
 		cc.TipColor = v
@@ -106,7 +112,7 @@ func WithSelectOptionTipColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionTipBG(v Color) SelectOption {
+func WithSelectOptionTipBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.TipBG
 		cc.TipBG = v
@@ -130,7 +136,7 @@ func WithSelectOptionHelp(v SelHelpTextFunc) SelectOption {
 	}
 }
 
-func WithSelectOptionHelpColor(v Color) SelectOption {
+func WithSelectOptionHelpColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.HelpColor
 		cc.HelpColor = v
@@ -138,7 +144,7 @@ func WithSelectOptionHelpColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionHelpBG(v Color) SelectOption {
+func WithSelectOptionHelpBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.HelpBG
 		cc.HelpBG = v
@@ -154,7 +160,7 @@ func WithSelectOptionValid(v func(sels []int) error) SelectOption {
 	}
 }
 
-func WithSelectOptionValidColor(v Color) SelectOption {
+func WithSelectOptionValidColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.ValidColor
 		cc.ValidColor = v
@@ -162,7 +168,7 @@ func WithSelectOptionValidColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionValidBG(v Color) SelectOption {
+func WithSelectOptionValidBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.ValidBG
 		cc.ValidBG = v
@@ -170,7 +176,7 @@ func WithSelectOptionValidBG(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionSuggestColor(v Color) SelectOption {
+func WithSelectOptionSuggestColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.SuggestColor
 		cc.SuggestColor = v
@@ -178,7 +184,7 @@ func WithSelectOptionSuggestColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionSuggestBG(v Color) SelectOption {
+func WithSelectOptionSuggestBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.SuggestBG
 		cc.SuggestBG = v
@@ -186,7 +192,7 @@ func WithSelectOptionSuggestBG(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionSelSuggestColor(v Color) SelectOption {
+func WithSelectOptionSelSuggestColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.SelSuggestColor
 		cc.SelSuggestColor = v
@@ -194,7 +200,7 @@ func WithSelectOptionSelSuggestColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionSelSuggestBG(v Color) SelectOption {
+func WithSelectOptionSelSuggestBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.SelSuggestBG
 		cc.SelSuggestBG = v
@@ -202,7 +208,7 @@ func WithSelectOptionSelSuggestBG(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionDescColor(v Color) SelectOption {
+func WithSelectOptionDescColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.DescColor
 		cc.DescColor = v
@@ -210,7 +216,7 @@ func WithSelectOptionDescColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionDescBG(v Color) SelectOption {
+func WithSelectOptionDescBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.DescBG
 		cc.DescBG = v
@@ -218,7 +224,7 @@ func WithSelectOptionDescBG(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionSelDescColor(v Color) SelectOption {
+func WithSelectOptionSelDescColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.SelDescColor
 		cc.SelDescColor = v
@@ -226,7 +232,7 @@ func WithSelectOptionSelDescColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionSelDescBG(v Color) SelectOption {
+func WithSelectOptionSelDescBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.SelDescBG
 		cc.SelDescBG = v
@@ -234,7 +240,7 @@ func WithSelectOptionSelDescBG(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionBarColor(v Color) SelectOption {
+func WithSelectOptionBarColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.BarColor
 		cc.BarColor = v
@@ -242,7 +248,7 @@ func WithSelectOptionBarColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionBarBG(v Color) SelectOption {
+func WithSelectOptionBarBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.BarBG
 		cc.BarBG = v
@@ -266,7 +272,7 @@ func WithSelectOptionShowItem(v bool) SelectOption {
 	}
 }
 
-func WithSelectOptionResultColor(v Color) SelectOption {
+func WithSelectOptionResultColor(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.ResultColor
 		cc.ResultColor = v
@@ -274,7 +280,7 @@ func WithSelectOptionResultColor(v Color) SelectOption {
 	}
 }
 
-func WithSelectOptionResultBG(v Color) SelectOption {
+func WithSelectOptionResultBG(v output.Color) SelectOption {
 	return func(cc *SelectOptions) SelectOption {
 		previous := cc.ResultBG
 		cc.ResultBG = v
@@ -336,32 +342,32 @@ func newDefaultSelectOptions() *SelectOptions {
 		Rows:            5,
 		OnFinish:        nil,
 		Multi:           false,
-		Finish:          Enter,
-		Cancel:          ControlC,
+		Finish:          input.Enter,
+		Cancel:          input.ControlC,
 		Tip:             "",
-		TipColor:        Yellow,
-		TipBG:           DefaultColor,
+		TipColor:        output.Yellow,
+		TipBG:           output.DefaultColor,
 		ShowHelp:        false,
 		Help:            defaultSelHelpText,
-		HelpColor:       DefaultColor,
-		HelpBG:          DefaultColor,
+		HelpColor:       output.DefaultColor,
+		HelpBG:          output.DefaultColor,
 		Valid:           nil,
-		ValidColor:      Red,
-		ValidBG:         DefaultColor,
-		SuggestColor:    White,
-		SuggestBG:       Cyan,
-		SelSuggestColor: Black,
-		SelSuggestBG:    Turquoise,
-		DescColor:       Black,
-		DescBG:          Turquoise,
-		SelDescColor:    White,
-		SelDescBG:       Cyan,
-		BarColor:        DarkGray,
-		BarBG:           Cyan,
+		ValidColor:      output.Red,
+		ValidBG:         output.DefaultColor,
+		SuggestColor:    output.White,
+		SuggestBG:       output.Cyan,
+		SelSuggestColor: output.Black,
+		SelSuggestBG:    output.Turquoise,
+		DescColor:       output.Black,
+		DescBG:          output.Turquoise,
+		SelDescColor:    output.White,
+		SelDescBG:       output.Cyan,
+		BarColor:        output.DarkGray,
+		BarBG:           output.Cyan,
 		FinishText:      defaultSelFinishText,
 		ShowItem:        true,
-		ResultColor:     Blue,
-		ResultBG:        DefaultColor,
+		ResultColor:     output.Blue,
+		ResultBG:        output.DefaultColor,
 		Defaults:        nil,
 	}
 	return cc

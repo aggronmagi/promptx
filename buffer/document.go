@@ -4,8 +4,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/aggronmagi/promptx/internal/bisect"
-	istrings "github.com/aggronmagi/promptx/internal/strings"
+	"github.com/aggronmagi/promptx/v2/internal/bisect"
+	istrings "github.com/aggronmagi/promptx/v2/internal/strings"
 	runewidth "github.com/mattn/go-runewidth"
 )
 

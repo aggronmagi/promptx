@@ -1,10 +1,11 @@
-package promptx
+package blocks
 
 import (
 	"fmt"
 	"strings"
 	"unicode"
 
+	completion "github.com/aggronmagi/promptx/v2/completion"
 	runewidth "github.com/mattn/go-runewidth"
 )
 
@@ -70,9 +71,9 @@ func formatTexts(o []string, max int, prefix, suffix string) (new []string, widt
 	return n, lenPrefix + width + lenSuffix
 }
 
-func formatSuggestions(suggests []*Suggest, max int) (new []*Suggest, width int) {
+func formatSuggestions(suggests []*completion.Suggest, max int) (new []*completion.Suggest, width int) {
 	num := len(suggests)
-	new = make([]*Suggest, num)
+	new = make([]*completion.Suggest, num)
 
 	left := make([]string, num)
 	for i := 0; i < num; i++ {
@@ -90,7 +91,7 @@ func formatSuggestions(suggests []*Suggest, max int) (new []*Suggest, width int)
 	right, rightWidth := formatTexts(right, max-leftWidth, rightPrefix, rightSuffix)
 
 	for i := 0; i < num; i++ {
-		new[i] = &Suggest{Text: left[i], Description: right[i]}
+		new[i] = &completion.Suggest{Text: left[i], Description: right[i]}
 	}
 	return new, leftWidth + rightWidth
 }
@@ -136,7 +137,7 @@ func TrimFirstSpace(in []rune) []rune {
 	return in[:firstIndex]
 }
 
-type SugguestPrint []*Suggest
+type SugguestPrint []*completion.Suggest
 
 func (s SugguestPrint) String() string {
 	str := fmt.Sprintf("[%d](", len(s))
