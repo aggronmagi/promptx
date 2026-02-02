@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/aggronmagi/promptx/v2/v2"
+	"github.com/aggronmagi/promptx/v2"
 	"github.com/aggronmagi/promptx/v2/v2/blocks"
 )
 
