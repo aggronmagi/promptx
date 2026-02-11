@@ -63,7 +63,9 @@ func parseArgDefs(arg interface{}) []*ArgDef {
 		}
 
 		// 解析 tag
-		parseArgTag(field, def)
+		if parseArgTag(field, def) {
+			continue
+		}
 
 		defs = append(defs, def)
 	}
@@ -72,7 +74,12 @@ func parseArgDefs(arg interface{}) []*ArgDef {
 }
 
 // parseArgTag 解析字段 tag
-func parseArgTag(field reflect.StructField, def *ArgDef) {
+func parseArgTag(field reflect.StructField, def *ArgDef) (ignore bool) {
+	ignore = false
+	if field.Tag.Get("ignore") != "" {
+		ignore = true
+		return
+	}
 	// 解析 arg tag
 	argTag := field.Tag.Get("arg")
 	if argTag != "" {
@@ -113,6 +120,7 @@ func parseArgTag(field reflect.StructField, def *ArgDef) {
 	if def.Prompt == "" {
 		def.Prompt = field.Name
 	}
+	return ignore
 }
 
 // parseArgs 解析参数值

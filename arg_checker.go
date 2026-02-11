@@ -3,6 +3,7 @@ package promptx
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -24,6 +25,7 @@ func init() {
 	RegisterChecker("NotEmpty", CheckerNotEmpty)
 	RegisterChecker("NotEmptyAndSpace", CheckerNotEmptyAndSpace)
 	RegisterChecker("Integer", CheckerInteger)
+	RegisterChecker("Float", CheckerFloat)
 	RegisterChecker("NotZeroInteger", CheckerNotZeroInteger)
 	RegisterChecker("NaturalNumber", CheckerNaturalNumber)
 }
@@ -52,8 +54,15 @@ func CheckerInteger(value string) error {
 	if value == "" {
 		return errors.New("empty input")
 	}
-	var v int64
-	_, err := fmt.Sscanf(value, "%d", &v)
+	_, err := strconv.ParseInt(value, 10, 64)
+	return err
+}
+
+func CheckerFloat(value string) error {
+	if value == "" {
+		return errors.New("empty input")
+	}
+	_, err := strconv.ParseFloat(value, 64)
 	return err
 }
 
